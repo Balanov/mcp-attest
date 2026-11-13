@@ -1,6 +1,6 @@
 # SPEC — mcp-attest
 
-Version 1.0.0 · the specification of what the tool does on the wire, what it
+Version 1.1.0 · the specification of what the tool does on the wire, what it
 records and what it decides. It is the contract; the implementation follows
 it.
 
