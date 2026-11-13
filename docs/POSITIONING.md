@@ -19,6 +19,11 @@ No dashboard shows that. A dashboard reports what the server believed.
 The second failure it covers is the token: a malformed, tampered or expired
 bearer that still completes the handshake.
 
+The third is OAuth: a token that is correctly signed but meant for another
+audience, another issuer or a smaller scope; a redirect URI that is not
+registered; an authorization code issued without a PKCE challenge; a token that
+is accepted by an upstream server it was never minted for.
+
 ## 2. Why this gap, and why now
 
 **The gap is named by the standard, not by us.**
@@ -56,7 +61,8 @@ and, in the same table:
 Two of the eight minimum test categories — the authorization matrix and the
 token tests — have no dedicated tool. Every tool below covers conformance,
 robustness, poisoning or red-teaming. None of them answers "does this server
-refuse what it must refuse, for every identity".
+refuse what it must refuse, for every identity", and none of them performs the
+OAuth tests the guide lists in the same section.
 
 **The same gap was reached from the other side, independently.**
 
@@ -143,10 +149,28 @@ the pull is concentrated in the tools that sit **in the traffic path** or
 **call a hosted model**. The offline, deterministic half of the market is
 thin.
 
+### Our own measurement
+
+The numbers above are third-party. We measured the same thing ourselves with
+`attest posture`, which is part of this product: every ninth server of the
+1,698 the official MCP registry lists with an HTTP remote, measured with three
+well-formed requests and no tool call at all.
+
+Of 189 servers measured, 177 answered the handshake and **81 of them — 45.8% —
+opened a session with no credentials at all**. 55 of the 78 that returned a
+manifest expose a tool that reaches a shell, a file, a URL or a database. The
+method and the numbers are in
+[docs/posture/2026-11-14.md](posture/2026-11-14.md), and the scan is
+reproducible with one command.
+
+That is consistent with the third-party figures above, measured differently. It
+is not a claim of superiority over anyone: it is the size of the hole the
+product stands in, measured with the product itself.
+
 ## 4. The claim we can actually make
 
 **We are not the best, and we should not say we are.** This project is at
-v1.1.0, has a handful of stars, no users, no independent evaluation and no
+v1.2.0, has a handful of stars, no users, no independent evaluation and no
 benchmark. mcp-assert is older, better documented and has production
 adoption we cannot match. promptfoo has a company's distribution behind it.
 
@@ -178,6 +202,14 @@ What is true, and narrow:
    produce, against the same policy file. A team that already instruments its
    agent with OTel does not need a second instrumentation path to get an
    answer.
+8. **The OAuth half of the standard.** Wrong audience, wrong issuer, wrong
+   scope, tampered signature, expiry, `alg: none`, protected resource
+   metadata, PKCE, redirect URI validation, state binding, token passthrough.
+   Twelve checks the OWASP guide lists next to the authorization matrix, and
+   no tool in the list above performs them.
+9. **A suite other harnesses can run.** The `mcp-attest-suite` format and its
+   schema are published, so the expectations are not locked inside this tool.
+   A team that prefers another harness can still write the suite once.
 
 What is **not** true, and should not be written anywhere:
 
@@ -188,6 +220,9 @@ What is **not** true, and should not be written anywhere:
 - We are not a red team: there is no model in the loop, so there is no
   attempt to make an agent misbehave.
 - We have not been evaluated by anyone but us.
+- Our posture measurement is not a disclosure: it names no host, notifies
+  nobody, and covers a systematic sample of the registry rather than the
+  internet.
 
 If a buyer asks "why you and not mcp-assert?", the honest answer is: if you
 want to know whether your server returns the right answer, use mcp-assert. If

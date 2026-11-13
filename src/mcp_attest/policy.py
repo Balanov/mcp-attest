@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .oauth import OAuthConfig, oauth_config_from_dict
+
 CRITICAL = "critical"
 HIGH = "high"
 MEDIUM = "medium"
@@ -193,6 +195,7 @@ class Policy:
     receipts_key_env: str = "MCP_ATTEST_KEY"
     cases: list[Case] = field(default_factory=list)
     probes: dict[str, dict[str, Any]] = field(default_factory=dict)
+    oauth: OAuthConfig = field(default_factory=OAuthConfig)
     raw: dict[str, Any] = field(default_factory=dict)
 
     def client(self, name: str) -> ClientPolicy | None:
@@ -289,6 +292,7 @@ def policy_from_dict(raw: dict[str, Any]) -> Policy:
         receipts_key_env=str(receipts.get("key_env", "MCP_ATTEST_KEY")),
         cases=cases,
         probes=dict(raw.get("probes") or {}),
+        oauth=oauth_config_from_dict(raw.get("oauth")),
         raw=raw,
     )
 

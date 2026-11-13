@@ -4,7 +4,45 @@
 
 ### Added
 
-- Nothing yet: the next release starts from the 1.1.0 line.
+- Nothing yet: the next release starts from the 1.2.0 line.
+
+## [1.2.0] - 2026-11-14
+
+The OAuth half of the OWASP minimum test set, a suite format another harness
+can run, and a posture measurement of the public servers.
+
+### Added
+
+- Twelve OAuth rules, `AT-OAUTH-001` to `AT-OAUTH-012`, covering the OAuth
+  tests the guide lists: wrong audience, wrong issuer, wrong scope, tampered
+  signature, expiry, `alg: none`, protected resource metadata (RFC 9728),
+  PKCE, redirect URI validation, state binding, and a token that must not be
+  passed to an upstream server. The rule catalogue now holds twenty-four live
+  rules.
+- The claim-level probes — expired, wrong audience, wrong issuer — mint
+  correctly signed tokens, because a token the server may refuse for the wrong
+  reason proves nothing. They need the signing key named by
+  `oauth.signing_key_env`; without it they are reported as skipped, never as
+  passed.
+- `attest suite export`, `attest suite validate` and `attest suite run`, and
+  the published `mcp-attest-suite` schema. A suite says who may call what, as
+  whom, and what must come back, in a shape another harness can read.
+- `attest posture` measures the servers the official MCP registry lists. It
+  sends at most three well-formed requests per server — the handshake, the
+  initialized notification and `tools/list` — and **never calls a tool**, so
+  nothing can be changed on a server that is not yours. The report carries
+  aggregates and the method; host names stay with the operator, because
+  naming a server that accepts an unauthenticated session is a disclosure.
+- The first posture measurement, published in `docs/posture/2026-11-14.md`:
+  of 189 servers measured, 177 answered and 81 of those (45.8%) opened a
+  session with no credentials at all.
+- `--stride` takes every N-th server of the registry, so a sample covers the
+  whole name space instead of the names that sort first, and the same stride
+  picks the same servers tomorrow.
+- The example HTTP server grew an OAuth 2.1 layer — `/authorize`, `/token`,
+  protected resource metadata — with one switch per check, so every rule can
+  be shown on its own.
+- `docs/ADOPT.md`: the sixty-second path from a server to a first run.
 
 ## [1.1.1] - 2026-11-14
 

@@ -14,6 +14,7 @@ what it had to refuse, for every identity, and can you show me the evidence?*
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
@@ -23,8 +24,18 @@ from typing import Any
 from .checks import Finding
 from .client import CallOutcome, McpSession, ServerTool
 from .evidence import Evidence, digest, now_iso, redact
-from .policy import CRITICAL, HIGH, INFO, LOW, MEDIUM, Policy
-from .rules import RULES
+from .oauth import (
+    authorization_request,
+    b64url,
+    http_request,
+    protected_resource_metadata,
+    resource_metadata_url,
+    resign,
+    scope_set,
+    token_probes,
+)
+from .policy import CRITICAL, HIGH, INFO, LOW, MEDIUM, Identity, Policy
+from .rules import OAUTH_RULES, RULES
 from .targets import Target, connect
 
 # ---------------------------------------------------------------------------
@@ -702,6 +713,8 @@ def run_conformance(
             _run_cases(result, policy, sessions, opts)
         if _enabled("AT-TOKEN-001", opts):
             _run_token_checks(result, policy, sessions, target, opts)
+        if any(_enabled(rule, opts) for rule in OAUTH_RULES):
+            _run_oauth_checks(result, policy, sessions, target, opts)
         if _enabled("AT-FAILCLOSED-001", opts):
             _run_fail_closed(result, sessions, opts)
         result.findings = _dedupe(result.findings)
@@ -954,6 +967,497 @@ def _run_token_checks(
                 )
         finally:
             session.close()
+
+
+def _bearer_of(policy: Policy) -> str:
+    """The first bearer token any identity carries."""
+    for client in policy.identities():
+        for name, value in client.identity.resolved_headers().items():
+            if name.lower() == "authorization" and value.lower().startswith("bearer "):
+                return value[7:].strip()
+    return ""
+
+
+def _oauth_session(target: Target, policy: Policy, header: str, name: str) -> McpSession:
+    """Open a session with one specific Authorization header."""
+    identity = Identity(headers={"Authorization": header})
+    return McpSession(connect(target, identity), name, timeout=target.timeout).open()
+
+
+def _run_oauth_checks(
+    result: ConformanceResult,
+    policy: Policy,
+    sessions: dict[str, McpSession],
+    target: Target,
+    opts: RunOptions,
+) -> None:
+    """OAuth 2.1: the other half of the OWASP minimum test set.
+
+    Every check here asks the server one question: *does it verify the token, or
+    only look at it?* A refusal is the expected outcome and is recorded as
+    evidence; a tool that runs anyway is a finding.
+    """
+    config = policy.oauth
+    if target.kind != "http":
+        result.skipped.append("AT-OAUTH-*: OAuth checks need an HTTP server, the identity rides on stdio environment variables")
+        return
+    if not config.declared:
+        result.skipped.append(
+            "AT-OAUTH-*: the policy declares no oauth block, so the OAuth checks do not apply to this target"
+        )
+        return
+
+    bearer = _bearer_of(policy)
+    if not bearer:
+        result.skipped.append("AT-OAUTH-*: no identity carries an Authorization: Bearer header")
+        return
+
+    key = ""
+    if config.has_key:
+        try:
+            key = config.key()
+        except KeyError as exc:
+            result.skipped.append("AT-OAUTH-*: %s" % exc)
+
+    if _enabled("AT-OAUTH-001", opts):
+        _probe_no_token(result, policy, target)
+    if _enabled("AT-OAUTH-002", opts) or _enabled("AT-OAUTH-003", opts) or _enabled("AT-OAUTH-004", opts) \
+            or _enabled("AT-OAUTH-005", opts) or _enabled("AT-OAUTH-006", opts):
+        _probe_tokens(result, policy, target, bearer, key, opts)
+    if _enabled("AT-OAUTH-007", opts):
+        _probe_scope(result, policy, target, bearer, key, opts)
+    if _enabled("AT-OAUTH-008", opts):
+        _probe_resource_metadata(result, policy, target)
+    if _enabled("AT-OAUTH-009", opts) or _enabled("AT-OAUTH-010", opts) or _enabled("AT-OAUTH-011", opts):
+        _probe_authorization_endpoint(result, policy, target, opts)
+    if _enabled("AT-OAUTH-012", opts):
+        _probe_passthrough(result, policy, target, bearer)
+
+
+def _oauth_finding(rule: str, title: str, detail: str, fix: str, evidence: dict[str, Any]) -> Finding:
+    severity = RULES[rule].severity if rule in RULES else HIGH
+    return Finding(check=rule, severity=severity, title=title, detail=detail, fix=fix, evidence=evidence)
+
+
+def _probe_no_token(result: ConformanceResult, policy: Policy, target: Target) -> None:
+    """A request without a token must be refused before any tool is reached."""
+    try:
+        session = _oauth_session(target, policy, "", "no-token")
+    except Exception as exc:  # noqa: BLE001 - refusing the handshake is the correct outcome
+        result.evidences.append(
+            Evidence(
+                test_id="AT-OAUTH-001",
+                identity="no-token",
+                method="initialize",
+                request={"headers": {"Authorization": "<none>"}},
+                response={"status": "deny", "detail": redact(str(exc))},
+                expected="deny",
+                observed="deny",
+                detail=str(exc),
+            )
+        )
+        return
+    try:
+        tools = [t.name for t in session.tools]
+        result.findings.append(
+            _oauth_finding(
+                "AT-OAUTH-001",
+                "the server accepted a request without a token",
+                detail=(
+                    "The initialize handshake completed with no Authorization header, and the server listed "
+                    "%d tool(s). A server that needs no token needs no authorization either." % len(tools)
+                ),
+                fix="Require a bearer token on every request and refuse the handshake when it is missing.",
+                evidence={"tools": tools},
+            )
+        )
+        result.evidences.append(
+            Evidence(
+                test_id="AT-OAUTH-001",
+                identity="no-token",
+                method="initialize",
+                request={"headers": {"Authorization": "<none>"}},
+                response={"status": "allow", "detail": "handshake completed", "tools": tools},
+                expected="deny",
+                observed="allow",
+            )
+        )
+    finally:
+        session.close()
+
+
+def _probe_tokens(
+    result: ConformanceResult,
+    policy: Policy,
+    target: Target,
+    bearer: str,
+    key: str,
+    opts: RunOptions,
+) -> None:
+    """Every token defect must be refused."""
+    for probe in token_probes(bearer, key):
+        if not _enabled(probe.rule, opts):
+            continue
+        if probe.needs_key and not key:
+            result.skipped.append(
+                "%s: needs the signing key in %r to mint a correctly signed %s"
+                % (probe.rule, policy.oauth.signing_key_env, probe.label)
+            )
+            continue
+        try:
+            session = _oauth_session(target, policy, probe.header, "oauth-probe")
+        except Exception as exc:  # noqa: BLE001 - refusing the handshake is the correct outcome
+            result.evidences.append(
+                Evidence(
+                    test_id=probe.rule,
+                    identity="oauth-probe",
+                    method="initialize",
+                    request={"headers": {"Authorization": probe.header}},
+                    response={"status": "deny", "detail": redact(str(exc))},
+                    expected="deny",
+                    observed="deny",
+                    detail=str(exc),
+                )
+            )
+            continue
+        try:
+            result.findings.append(
+                _oauth_finding(
+                    probe.rule,
+                    "the server accepted %s" % probe.label,
+                    detail=(
+                        "A token that must never be valid completed the initialize handshake: %s. "
+                        "The server reads the token but does not verify it." % probe.detail
+                    ),
+                    fix="Verify the signature, the issuer, the audience, the expiry and the scope on every request.",
+                    evidence={"probe": probe.label, "rule": probe.rule},
+                )
+            )
+            tool = next((t for t in session.tools if _is_safe_to_call(t, opts.allow_unsafe, False)), None)
+            if tool is not None:
+                outcome = session.call_tool(tool.name, probe_arguments(tool))
+                result.calls_made += 1
+                _record(
+                    result,
+                    probe.rule,
+                    "oauth-probe",
+                    "tools/call",
+                    outcome.request,
+                    outcome,
+                    "deny",
+                    outcome.status,
+                )
+        finally:
+            session.close()
+
+
+def _probe_scope(
+    result: ConformanceResult,
+    policy: Policy,
+    target: Target,
+    bearer: str,
+    key: str,
+    opts: RunOptions,
+) -> None:
+    """A token without the scope a tool requires must not reach that tool."""
+    required = policy.oauth.required_scopes
+    if not required:
+        result.skipped.append("AT-OAUTH-007: the policy declares no required_scopes for any tool")
+        return
+    if not key:
+        result.skipped.append(
+            "AT-OAUTH-007: needs the signing key in %r to mint a correctly signed token with a smaller scope"
+            % policy.oauth.signing_key_env
+        )
+        return
+
+    granted = scope_set(bearer)
+    target_tool = next(
+        (name for name, scope in required.items() if scope in granted),
+        None,
+    )
+    if target_tool is None:
+        result.skipped.append(
+            "AT-OAUTH-007: the token carries %s, which does not cover any required scope"
+            % (", ".join(sorted(granted)) or "no scope")
+        )
+        return
+
+    scope = required[target_tool]
+    reduced = sorted(granted - {scope})
+    try:
+        limited = resign(bearer, key, scope=" ".join(reduced))
+    except (ValueError, json.JSONDecodeError) as exc:
+        result.skipped.append("AT-OAUTH-007: the token is not a JWT, the scope cannot be reduced (%s)" % exc)
+        return
+
+    try:
+        session = _oauth_session(target, policy, "Bearer " + limited, "scope-probe")
+    except Exception as exc:  # noqa: BLE001 - refusing the handshake is a valid outcome
+        result.evidences.append(
+            Evidence(
+                test_id="AT-OAUTH-007",
+                identity="scope-probe",
+                method="initialize",
+                request={"scope": reduced},
+                response={"status": "deny", "detail": redact(str(exc))},
+                expected="deny",
+                observed="deny",
+                detail=str(exc),
+            )
+        )
+        return
+    try:
+        tool = next((t for t in session.tools if t.name == target_tool), None)
+        if tool is None:
+            result.skipped.append("AT-OAUTH-007: the server does not expose the tool '%s'" % target_tool)
+            return
+        outcome = session.call_tool(tool.name, probe_arguments(tool))
+        result.calls_made += 1
+        _record(result, "AT-OAUTH-007", "scope-probe", "tools/call", outcome.request, outcome, "deny", outcome.status)
+        if outcome.status == "allow":
+            result.findings.append(
+                _oauth_finding(
+                    "AT-OAUTH-007",
+                    "tool '%s' ran without the scope it requires" % target_tool,
+                    detail=(
+                        "The token was correctly signed and unexpired, but it carries only %s and not '%s'. "
+                        "The server did not check the scope, so a token issued for a narrower job can do a wider one."
+                        % (", ".join(reduced) or "no scope", scope)
+                    ),
+                    fix="Check the scope of the presented token against the scope each tool requires.",
+                    evidence={"tool": target_tool, "missing_scope": scope, "granted": reduced},
+                )
+            )
+    finally:
+        session.close()
+
+
+def _probe_resource_metadata(result: ConformanceResult, policy: Policy, target: Target) -> None:
+    """The server must publish where a client can find its authorization server."""
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "mcp-attest", "version": "1"},
+            },
+        }
+    )
+    response = http_request(
+        target.url,
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
+        body=body,
+        timeout=target.timeout,
+    )
+    if response.status not in (401, 403):
+        result.skipped.append(
+            "AT-OAUTH-008: the server answered HTTP %d to an unauthenticated request, so it has no refusal to point at"
+            % response.status
+        )
+        return
+
+    authenticate = response.headers.get("www-authenticate", "")
+    pointed_at = resource_metadata_url(authenticate)
+    if not pointed_at:
+        result.findings.append(
+            _oauth_finding(
+                "AT-OAUTH-008",
+                "the server refuses requests but does not say where its authorization server is",
+                detail=(
+                    "The answer to an unauthenticated request is HTTP %d with a WWW-Authenticate header that names no "
+                    "resource_metadata. A client cannot discover the authorization server, so it has to guess or be "
+                    "configured by hand." % response.status
+                ),
+                fix="Publish protected resource metadata (RFC 9728) and name it in the WWW-Authenticate header.",
+                evidence={"www_authenticate": authenticate},
+            )
+        )
+        return
+
+    document, problem = protected_resource_metadata(pointed_at, timeout=target.timeout)
+    if document is None:
+        result.findings.append(
+            _oauth_finding(
+                "AT-OAUTH-008",
+                "the protected resource metadata is not usable",
+                detail="The server points at %s, but %s." % (pointed_at, problem),
+                fix="Serve a JSON document with at least 'resource' and 'authorization_servers'.",
+                evidence={"url": pointed_at, "problem": problem},
+            )
+        )
+        return
+
+    missing = [key for key in ("resource", "authorization_servers") if not document.get(key)]
+    if missing:
+        result.findings.append(
+            _oauth_finding(
+                "AT-OAUTH-008",
+                "the protected resource metadata is missing %s" % ", ".join(missing),
+                detail=(
+                    "The document at %s does not carry %s, so a client cannot tell which server it is talking to "
+                    "or where to authorize." % (pointed_at, ", ".join(missing))
+                ),
+                fix="Include 'resource' and 'authorization_servers' in the metadata document.",
+                evidence={"url": pointed_at, "document": document},
+            )
+        )
+        return
+
+    expected = policy.oauth.resource
+    declared = str(document.get("resource") or "")
+    if expected and declared and declared.rstrip("/") != expected.rstrip("/"):
+        result.findings.append(
+            _oauth_finding(
+                "AT-OAUTH-008",
+                "the protected resource metadata names a different resource",
+                detail="The metadata says the resource is %s, the policy expects %s." % (declared, expected),
+                fix="Publish the canonical identifier of the resource the client asked for.",
+                evidence={"declared": declared, "expected": expected},
+            )
+        )
+
+
+def _probe_authorization_endpoint(
+    result: ConformanceResult, policy: Policy, target: Target, opts: RunOptions
+) -> None:
+    """PKCE, redirect_uri and state, as the authorization endpoint handles them."""
+    config = policy.oauth
+    if not config.authorization_endpoint or not config.redirect_uri:
+        result.skipped.append(
+            "AT-OAUTH-009/010/011: the policy declares no authorization_endpoint or redirect_uri"
+        )
+        return
+
+    challenge = b64url(hashlib.sha256(b"mcp-attest-verifier").digest())
+
+    if _enabled("AT-OAUTH-009", opts):
+        response = authorization_request(
+            config.authorization_endpoint, config.redirect_uri, code_challenge=""
+        )
+        if _issued_code(response):
+            result.findings.append(
+                _oauth_finding(
+                    "AT-OAUTH-009",
+                    "the authorization endpoint issued a code without a PKCE challenge",
+                    detail=(
+                        "A request with no code_challenge was answered with an authorization code. "
+                        "Without PKCE an intercepted code can be redeemed by whoever intercepted it."
+                    ),
+                    fix="Require code_challenge with code_challenge_method S256 on every authorization request.",
+                    evidence={"location": response.location},
+                )
+            )
+
+    if _enabled("AT-OAUTH-010", opts):
+        rogue = config.redirect_uri + ".attest-rogue"
+        response = authorization_request(config.authorization_endpoint, rogue, code_challenge=challenge)
+        if _issued_code(response) and response.location.startswith(rogue):
+            result.findings.append(
+                _oauth_finding(
+                    "AT-OAUTH-010",
+                    "the authorization endpoint issued a code for an unregistered redirect_uri",
+                    detail=(
+                        "The request asked for %s, which is not the registered redirect URI, and the server answered "
+                        "with an authorization code. The code can be sent to any address the attacker controls." % rogue
+                    ),
+                    fix="Compare redirect_uri against the registered value and refuse the request when they differ.",
+                    evidence={"location": response.location},
+                )
+            )
+
+    if _enabled("AT-OAUTH-011", opts):
+        response = authorization_request(
+            config.authorization_endpoint, config.redirect_uri, state="attest-state", code_challenge=challenge
+        )
+        if _issued_code(response) and "state=" not in response.location:
+            result.findings.append(
+                _oauth_finding(
+                    "AT-OAUTH-011",
+                    "the authorization response does not carry the state",
+                    detail=(
+                        "The client sent state=attest-state and the answer did not carry it back. "
+                        "Without state binding a response can be injected into the client's session."
+                    ),
+                    fix="Echo the state parameter in the authorization response and bind it to the client session.",
+                    evidence={"location": response.location},
+                )
+            )
+
+
+def _issued_code(response: Any) -> bool:
+    """Did the authorization endpoint hand out a code?"""
+    if response.status not in (301, 302, 303, 307, 308):
+        return False
+    location = response.location or ""
+    if "code=" not in location:
+        return False
+    query = location.split("?", 1)[1] if "?" in location else ""
+    return "code=" in query
+
+
+def _probe_passthrough(result: ConformanceResult, policy: Policy, target: Target, bearer: str) -> None:
+    """A token issued for this server must not open a session with the upstream."""
+    upstream = policy.oauth.upstream
+    if not upstream:
+        result.skipped.append("AT-OAUTH-012: the policy declares no upstream server to test against")
+        return
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "mcp-attest", "version": "1"},
+            },
+        }
+    )
+    response = http_request(
+        upstream,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "Authorization": "Bearer " + bearer,
+        },
+        body=body,
+        timeout=target.timeout,
+    )
+    if response.status in (401, 403):
+        result.evidences.append(
+            Evidence(
+                test_id="AT-OAUTH-012",
+                identity="upstream",
+                method="initialize",
+                request={"url": upstream},
+                response={"status": "deny", "detail": "the upstream answered HTTP %d" % response.status},
+                expected="deny",
+                observed="deny",
+            )
+        )
+        return
+    if response.status == 0:
+        result.skipped.append("AT-OAUTH-012: the upstream %s is unreachable" % upstream)
+        return
+    result.findings.append(
+        _oauth_finding(
+            "AT-OAUTH-012",
+            "the upstream server accepted a token issued for this server",
+            detail=(
+                "The token was minted for this resource, and the upstream answered HTTP %d to it. "
+                "Either the client token is forwarded upstream, or the two servers share one trust domain. "
+                "A token issued for one resource must not open another." % response.status
+            ),
+            fix="Exchange the client token for a token scoped to the upstream, or forward no credential at all.",
+            evidence={"upstream": upstream, "status": response.status},
+        )
+    )
 
 
 def _run_fail_closed(result: ConformanceResult, sessions: dict[str, McpSession], opts: RunOptions) -> None:

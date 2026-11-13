@@ -1,6 +1,6 @@
 # SPEC — mcp-attest
 
-Version 1.1.0 · the specification of what the tool does on the wire, what it
+Version 1.2.0 · the specification of what the tool does on the wire, what it
 records and what it decides. It is the contract; the implementation follows
 it.
 
@@ -81,10 +81,24 @@ handshake ends the run for that identity; it is never retried silently.
       "args": { "order_id": "B-77" }, "expect": "deny", "reason": "belongs to bob" }
   ],
   "probes": { "get_order": { "order_id": "A-1" } },
+  "oauth": {
+    "issuer": "https://auth.example.com/",
+    "audience": "mcp://orders",
+    "signing_key_env": "MCP_ATTEST_OAUTH_KEY",
+    "authorization_endpoint": "https://mcp.example.com/authorize",
+    "redirect_uri": "https://client.example.com/callback",
+    "resource": "https://mcp.example.com/mcp",
+    "upstream": "https://upstream.example.com/mcp",
+    "required_scopes": { "refund_order": "orders:write" }
+  },
   "gateway": { "mode": "routed", "fail_closed": true, "passthrough_credentials": false },
   "receipts": { "required": true, "key_env": "MCP_ATTEST_KEY" }
 }
 ```
+
+The `oauth` block is what the server's OAuth layer must look like. A policy
+without it says "this server does not use OAuth", and the OAuth rules do not
+run.
 
 ### 3.1 Decision order
 
@@ -172,7 +186,7 @@ rule.
 
 ## 7. Rules
 
-Twelve live rules, each mapped to a test in the OWASP MCP Security Testing
+Twenty-four live rules, each mapped to a test in the OWASP MCP Security Testing
 Guide. `attest rules` prints the catalogue.
 
 | ID | Rule | OWASP | Severity |
@@ -189,6 +203,18 @@ Guide. `attest rules` prints the catalogue.
 | AT-SCHEMA-001 | strict tool schemas | MCPSTG-TOOL-04 | medium |
 | AT-APPROVAL-001 | declared risk and approval | MCPSTG-AUTHZ-02 | medium |
 | AT-ERROR-001 | clean error messages | MCPSTG-CONF-03 | medium |
+| AT-OAUTH-001 | a token is required | MCPSTG-AUTHN-01 | critical |
+| AT-OAUTH-002 | the signature is verified | MCPSTG-AUTHN-02 | critical |
+| AT-OAUTH-003 | unsigned tokens are refused | MCPSTG-AUTHN-03 | critical |
+| AT-OAUTH-004 | expiry is enforced | MCPSTG-AUTHN-05 | high |
+| AT-OAUTH-005 | audience is enforced | MCPSTG-AUTHN-06 | high |
+| AT-OAUTH-006 | issuer is enforced | MCPSTG-AUTHN-07 | high |
+| AT-OAUTH-007 | scope is enforced | MCPSTG-AUTHZ-04 | high |
+| AT-OAUTH-008 | protected resource metadata | MCPSTG-AUTHN-08 | medium |
+| AT-OAUTH-009 | PKCE is required | MCPSTG-AUTHN-09 | high |
+| AT-OAUTH-010 | redirect_uri is validated | MCPSTG-AUTHN-10 | critical |
+| AT-OAUTH-011 | state is echoed | MCPSTG-AUTHN-11 | medium |
+| AT-OAUTH-012 | no token passthrough | MCPSTG-AUTHN-12 | critical |
 
 ### 7.1 Token probes
 
@@ -203,13 +229,58 @@ If the handshake completes with any of them, the token was accepted and the
 finding is critical. The probes need an HTTP server, because on stdio the
 identity travels in the environment.
 
-### 7.2 Manifest drift
+### 7.2 OAuth probes
+
+The OAuth rules run only when the policy carries an `oauth` block and the target
+speaks Streamable HTTP. They ask one question in twelve ways: does the server
+verify the token, or only look at it?
+
+**Signature-level probes** need no key and are always run: a request with no
+token at all, a token whose signature was altered, a token that declares
+`alg: none`.
+
+**Claim-level probes** must be *correctly signed*, otherwise the server can
+refuse them for the wrong reason and the test proves nothing. Minting such a
+token needs the signing key, named by `oauth.signing_key_env`:
+
+| Probe | Token |
+|---|---|
+| expired | correctly signed, `exp` one hour in the past |
+| wrong audience | correctly signed, `aud` pointing at another resource |
+| wrong issuer | correctly signed, `iss` pointing at another issuer |
+
+Without the key those three are reported as **skipped**, never as passed.
+
+**Scope** is checked by minting a correctly signed token with one scope removed
+and calling a tool that requires it. `oauth.required_scopes` maps a tool to the
+scope it needs.
+
+**Protected resource metadata** is fetched from the URL the server names in its
+`WWW-Authenticate` header (RFC 9728). The document must carry `resource` and
+`authorization_servers`, and `resource` must be the server the client asked
+for. A refusal that names no metadata at all is reported too.
+
+**The authorization endpoint** is asked three things, and the harness reads the
+redirect instead of following it:
+
+| Probe | Request | Failure |
+|---|---|---|
+| PKCE | no `code_challenge` | a code is issued |
+| redirect_uri | an unregistered `redirect_uri` | a code is issued to that address |
+| state | `state=attest-state` | the answer carries a code but no state |
+
+**Token passthrough** is checked by presenting the identity's token to the
+upstream server named by `oauth.upstream`. If the upstream accepts a token that
+was minted for this resource, the token is being passed on or the two share one
+trust domain.
+
+### 7.3 Manifest drift
 
 The manifest hash is a SHA-256 over the sorted list of tools with their
 descriptions, input schemas and annotations. Compared against a baseline
 file, a changed tool, a new tool and a removed tool are each reported.
 
-### 7.3 Secrets
+### 7.4 Secrets
 
 Output is scanned for AWS access keys, AWS secret keys, OpenAI and Anthropic
 keys, GitHub and Slack tokens, Google API keys, JWTs, PEM private keys and
@@ -271,7 +342,70 @@ The trace format is newline-delimited JSON:
 {"type":"gateway_route","server":"fs","tools":["read_file","list_directory"]}
 ```
 
-## 11. Safety
+## 11. The suite format
+
+A policy is written for one harness. A suite is the portable projection of a
+policy: who may call what, as whom, and what must come back. The schema is
+published at `docs/mcp-attest-suite.schema.json`.
+
+```json
+{
+  "format": "mcp-attest-suite",
+  "version": 1,
+  "name": "orders-authorization",
+  "description": "Who may read and refund which order",
+  "target": { "url": "https://mcp.example.com/mcp" },
+  "identities": [
+    {
+      "name": "alice",
+      "headers": { "Authorization": "Bearer ${ALICE_TOKEN}" },
+      "env": {},
+      "expect": { "allow": ["list_orders"], "deny": ["refund_order"], "conditional": [] },
+      "cases": [
+        { "id": "AUTHZ-CROSS-01", "tool": "get_order", "args": { "order_id": "B-77" },
+          "expect": "deny", "reason": "belongs to bob" }
+      ]
+    }
+  ],
+  "probes": { "get_order": { "order_id": "A-1" } },
+  "oauth": {},
+  "rules": ["AT-AUTHZ-001", "AT-AUTHZ-002"],
+  "metadata": {}
+}
+```
+
+`attest suite export` writes one from a policy, `attest suite validate` checks
+one against the schema, `attest suite run` runs one. A harness that does not
+implement a rule named in `rules` must say so; the list is a promise, not a
+description.
+
+Credentials stay as `${VAR}` references in the suite, exactly as in the policy.
+
+## 12. Posture mode
+
+`attest posture` measures servers the operator does not own. Its limits are
+part of the contract:
+
+- at most three requests per server: `initialize`,
+  `notifications/initialized`, `tools/list`;
+- **no tool is ever called**, so nothing can be changed on someone else's
+  system;
+- every request is well-formed traffic from the specification: no fuzzing, no
+  malformed payloads, no path probing;
+- one connection per server, with a pause in between (`--delay`);
+- the source is the official MCP registry, latest version of each entry, only
+  entries that publish a Streamable HTTP remote;
+- `--stride N` takes every N-th server, so the sample covers the whole name
+  space instead of the names that sort first, and the same stride picks the
+  same servers tomorrow.
+
+A server is **open** when the handshake completes with no credentials,
+**closed** when the handshake is refused, and **no answer** when it cannot be
+reached. The published report carries aggregates and the method; host names stay
+with the operator, because naming a server that accepts an unauthenticated
+session is a disclosure.
+
+## 13. Safety
 
 - The harness only calls a server the operator named.
 - It writes nothing except the files it was asked to write.

@@ -71,7 +71,8 @@ class OtlpCliTest(unittest.TestCase):
         env["PYTHONPATH"] = str(ROOT / "src")
         return subprocess.run(
             [sys.executable, "-m", "mcp_attest", *args],
-            capture_output=True, text=True, env=env, cwd=str(ROOT),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            env=env, cwd=str(ROOT),
         )
 
     def test_check_reads_an_otlp_export(self):

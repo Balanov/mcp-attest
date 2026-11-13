@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://balanov.pro/mcp-attest/suite.schema.json",
+  "title": "mcp-attest suite",
+  "description": "A portable conformance suite for MCP servers. Any harness that can open an MCP session and compare a decision with an expectation can run it.",
+  "type": "object",
+  "required": ["format", "version", "name", "identities"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "mcp-attest-suite" },
+    "version": { "const": 1 },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the suite is called, e.g. \"orders-authorization\"."
+    },
+    "description": {
+      "type": "string",
+      "description": "One line about what the suite checks."
+    },
+    "target": {
+      "type": "object",
+      "description": "Where the server is. A harness may override it.",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "description": "URL of a server speaking Streamable HTTP." },
+        "command": { "type": "string", "description": "Command that starts a server over stdio." }
+      }
+    },
+    "identities": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The principals the suite presents, and what each of them may do.",
+      "items": {
+        "type": "object",
+        "required": ["name", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "headers": {
+            "type": "object",
+            "description": "HTTP headers this identity presents. Values may reference the environment with ${VAR}.",
+            "additionalProperties": { "type": "string" }
+          },
+          "env": {
+            "type": "object",
+            "description": "Environment variables this identity passes to a stdio server.",
+            "additionalProperties": { "type": "string" }
+          },
+          "expect": {
+            "type": "object",
+            "description": "What this identity may and may not do. A tool that is in neither list is denied.",
+            "additionalProperties": false,
+            "properties": {
+              "allow": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Tools this identity may call."
+              },
+              "deny": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Tools this identity must never call."
+              },
+              "conditional": {
+                "type": "array",
+                "description": "Rules that carve an exception out of a blanket allow or deny.",
+                "items": {
+                  "type": "object",
+                  "required": ["tool"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tool": { "type": "string" },
+                    "allow_when": {
+                      "type": "object",
+                      "description": "Argument conditions. A plain value means equality; a value ending in / means prefix; a value containing * means glob.",
+                      "additionalProperties": true
+                    },
+                    "action": { "type": "string", "enum": ["allow", "deny"] },
+                    "reason": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "cases": {
+            "type": "array",
+            "description": "One explicit expectation about one call.",
+            "items": {
+              "type": "object",
+              "required": ["tool", "expect"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string" },
+                "tool": { "type": "string" },
+                "args": { "type": "object", "additionalProperties": true },
+                "expect": { "type": "string", "enum": ["allow", "deny"] },
+                "reason": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "description": "Arguments for tools whose schema cannot be trusted to produce a harmless value.",
+      "additionalProperties": { "type": "object", "additionalProperties": true }
+    },
+    "oauth": {
+      "type": "object",
+      "description": "What the server's OAuth layer must look like. Omit it when the server does not use OAuth.",
+      "additionalProperties": true,
+      "properties": {
+        "issuer": { "type": "string" },
+        "audience": { "type": "string" },
+        "authorization_endpoint": { "type": "string" },
+        "token_endpoint": { "type": "string" },
+        "protected_resource_metadata": { "type": "string" },
+        "resource": { "type": "string" },
+        "redirect_uri": { "type": "string" },
+        "signing_key_env": {
+          "type": "string",
+          "description": "Environment variable holding the HS256 signing key. Needed for the claim-level probes; without it they are skipped, never passed."
+        },
+        "upstream": { "type": "string" },
+        "required_scopes": {
+          "type": "object",
+          "description": "The scope each tool requires.",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "The rules this suite covers. A harness that does not implement one of them must say so.",
+      "items": { "type": "string" }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form provenance: author, date, OWASP test identifiers.",
+      "additionalProperties": true
+    }
+  }
+}

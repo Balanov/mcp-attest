@@ -4,7 +4,7 @@ author: "Balanov.PRO"
 
 inputs:
   mode:
-    description: "test = live conformance against a server; check = audit a recorded trace"
+    description: "test = live conformance against a server; check = audit a recorded trace; suite = run a portable suite"
     required: false
     default: "test"
   policy:
@@ -23,6 +23,14 @@ inputs:
     description: "Path to the newline-delimited JSON trace (mode: check)"
     required: false
     default: ".attest/trace.jsonl"
+  otlp:
+    description: "Path to an OpenTelemetry export to check instead of a trace file (mode: check)"
+    required: false
+    default: ""
+  suite:
+    description: "Path to a portable suite file (mode: suite)"
+    required: false
+    default: ".attest/suite.json"
   baseline:
     description: "Approved tool manifest to compare against (mode: test)"
     required: false
@@ -39,6 +47,10 @@ inputs:
     description: "Write the signed evidence bundle to this path"
     required: false
     default: ""
+  key-env:
+    description: "Name of the environment variable holding the HMAC key for the evidence bundle"
+    required: false
+    default: "MCP_ATTEST_KEY"
 
 runs:
   using: "composite"
@@ -58,7 +70,7 @@ runs:
         if [ -n "${{ inputs.url }}" ]; then args+=(--url "${{ inputs.url }}"); fi
         if [ -n "${{ inputs.baseline }}" ]; then args+=(--baseline "${{ inputs.baseline }}"); fi
         if [ -n "${{ inputs.sarif }}" ]; then args+=(--sarif "${{ inputs.sarif }}"); fi
-        if [ -n "${{ inputs.evidence }}" ]; then args+=(--evidence "${{ inputs.evidence }}"); fi
+        if [ -n "${{ inputs.evidence }}" ]; then args+=(--evidence "${{ inputs.evidence }}" --key-env "${{ inputs.key-env }}"); fi
         if [ "${{ inputs.strict }}" = "true" ]; then args+=(--strict); fi
         attest "${args[@]}"
 
@@ -66,12 +78,24 @@ runs:
       if: inputs.mode == 'check'
       shell: bash
       run: |
-        args=(check --policy "${{ inputs.policy }}" --trace "${{ inputs.trace }}" --json)
+        args=(check --policy "${{ inputs.policy }}" --json)
+        if [ -n "${{ inputs.otlp }}" ]; then args+=(--otlp "${{ inputs.otlp }}"); else args+=(--trace "${{ inputs.trace }}"); fi
+        if [ "${{ inputs.strict }}" = "true" ]; then args+=(--strict); fi
+        attest "${args[@]}"
+
+    - name: Run the suite
+      if: inputs.mode == 'suite'
+      shell: bash
+      run: |
+        args=(suite run --suite "${{ inputs.suite }}")
+        if [ -n "${{ inputs.command }}" ]; then args+=(--command "${{ inputs.command }}"); fi
+        if [ -n "${{ inputs.url }}" ]; then args+=(--url "${{ inputs.url }}"); fi
+        if [ -n "${{ inputs.sarif }}" ]; then args+=(--sarif "${{ inputs.sarif }}"); fi
         if [ "${{ inputs.strict }}" = "true" ]; then args+=(--strict); fi
         attest "${args[@]}"
 
     - name: Upload SARIF findings
-      if: inputs.mode == 'test' && inputs.sarif != ''
+      if: (inputs.mode == 'test' || inputs.mode == 'suite') && inputs.sarif != ''
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: ${{ inputs.sarif }}

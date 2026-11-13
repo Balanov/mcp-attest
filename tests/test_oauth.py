@@ -1,0 +1,232 @@
+"""OAuth conformance tests: the harness against a server with a real OAuth layer.
+
+Every check in the OAuth set has a matching switch on the example server, so
+each rule can be shown on its own: the secure server must be clean, and one
+disabled check must produce exactly the rule that names it.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+from mcp_attest.conformance import RunOptions, run_conformance  # noqa: E402
+from mcp_attest.oauth import mint_jwt  # noqa: E402
+from mcp_attest.policy import policy_from_dict  # noqa: E402
+from mcp_attest.targets import parse_target  # noqa: E402
+
+SERVER = ROOT / "examples" / "servers" / "orders_http_server.py"
+POLICY = ROOT / "examples" / "live-policy-oauth.json"
+
+KEY = "test-signing-key"
+ISSUER = "https://auth.example.com/"
+AUDIENCE = "mcp://orders"
+
+
+def free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def start_server(port: int, *flags: str) -> subprocess.Popen:
+    proc = subprocess.Popen(
+        [sys.executable, str(SERVER), "--port", str(port), "--oauth", *flags],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return proc
+        except OSError:
+            time.sleep(0.1)
+    proc.kill()
+    raise RuntimeError("the example server did not start")
+
+
+def stop_server(proc: subprocess.Popen) -> None:
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+def make_token(subject: str, scope: str = "orders:read") -> str:
+    now = int(time.time())
+    return mint_jwt(
+        {
+            "sub": subject,
+            "iss": ISSUER,
+            "aud": AUDIENCE,
+            "scope": scope,
+            "iat": now,
+            "exp": now + 3600,
+        },
+        KEY,
+    )
+
+
+def make_policy(port: int, upstream_port: int | None = None) -> object:
+    raw = json.loads(POLICY.read_text(encoding="utf-8"))
+    oauth = raw["oauth"]
+    oauth["authorization_endpoint"] = "http://127.0.0.1:%d/authorize" % port
+    oauth["redirect_uri"] = "http://127.0.0.1:%d/callback" % port
+    oauth["resource"] = "http://127.0.0.1:%d/mcp" % port
+    oauth["protected_resource_metadata"] = (
+        "http://127.0.0.1:%d/.well-known/oauth-protected-resource" % port
+    )
+    if upstream_port is None:
+        oauth.pop("upstream", None)
+    else:
+        oauth["upstream"] = "http://127.0.0.1:%d/mcp" % upstream_port
+    return policy_from_dict(raw)
+
+
+class OAuthBase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.port = free_port()
+        self.proc = start_server(self.port)
+        self.addCleanup(stop_server, self.proc)
+        os.environ["ALICE_TOKEN"] = make_token("alice")
+        os.environ["LEAD_TOKEN"] = make_token("lead", "orders:read orders:write")
+        os.environ["MCP_ATTEST_OAUTH_KEY"] = KEY
+        self.addCleanup(os.environ.pop, "ALICE_TOKEN", None)
+        self.addCleanup(os.environ.pop, "LEAD_TOKEN", None)
+        self.addCleanup(os.environ.pop, "MCP_ATTEST_OAUTH_KEY", None)
+
+    def run_harness(self, port: int | None = None, upstream_port: int | None = None):
+        port = port or self.port
+        policy = make_policy(port, upstream_port)
+        target = parse_target(None, "http://127.0.0.1:%d/mcp" % port, timeout=15.0)
+        return run_conformance(target, policy, RunOptions(timeout=15.0))
+
+    def checks(self, result) -> set[str]:
+        return {f.check for f in result.findings}
+
+
+class SecureOAuthServerTest(OAuthBase):
+    def test_a_correct_server_has_no_oauth_findings(self) -> None:
+        result = self.run_harness()
+        oauth_findings = [f for f in result.findings if f.check.startswith("AT-OAUTH-")]
+        self.assertEqual([], [(f.check, f.title) for f in oauth_findings])
+        self.assertTrue(result.calls_made > 0, "the harness made no calls")
+
+    def test_every_oauth_probe_ran(self) -> None:
+        result = self.run_harness()
+        seen = {e.test_id for e in result.evidences if e.test_id.startswith("AT-OAUTH-")}
+        self.assertIn("AT-OAUTH-001", seen)
+        self.assertIn("AT-OAUTH-002", seen)
+        self.assertIn("AT-OAUTH-003", seen)
+        self.assertIn("AT-OAUTH-004", seen)
+        self.assertIn("AT-OAUTH-005", seen)
+        self.assertIn("AT-OAUTH-006", seen)
+        self.assertIn("AT-OAUTH-007", seen)
+
+
+class OAuthDefectTest(OAuthBase):
+    """One disabled check, one rule."""
+
+    def assert_rule(self, flag: str, rule: str) -> None:
+        port = free_port()
+        proc = start_server(port, flag)
+        self.addCleanup(stop_server, proc)
+        result = self.run_harness(port=port)
+        self.assertIn(rule, self.checks(result), "%s was not reported" % rule)
+
+    def test_missing_token_is_accepted(self) -> None:
+        self.assert_rule("--no-token-check", "AT-OAUTH-001")
+
+    def test_tampered_signature_is_accepted(self) -> None:
+        self.assert_rule("--no-signature-check", "AT-OAUTH-002")
+
+    def test_unsigned_token_is_accepted(self) -> None:
+        self.assert_rule("--no-signature-check", "AT-OAUTH-003")
+
+    def test_expired_token_is_accepted(self) -> None:
+        self.assert_rule("--no-expiry-check", "AT-OAUTH-004")
+
+    def test_wrong_audience_is_accepted(self) -> None:
+        self.assert_rule("--no-audience-check", "AT-OAUTH-005")
+
+    def test_wrong_issuer_is_accepted(self) -> None:
+        self.assert_rule("--no-issuer-check", "AT-OAUTH-006")
+
+    def test_scope_is_not_enforced(self) -> None:
+        self.assert_rule("--no-scope-check", "AT-OAUTH-007")
+
+    def test_resource_metadata_is_missing(self) -> None:
+        self.assert_rule("--no-resource-metadata", "AT-OAUTH-008")
+
+    def test_pkce_is_not_required(self) -> None:
+        self.assert_rule("--no-pkce", "AT-OAUTH-009")
+
+    def test_redirect_uri_is_not_checked(self) -> None:
+        self.assert_rule("--no-redirect-check", "AT-OAUTH-010")
+
+    def test_state_is_dropped(self) -> None:
+        self.assert_rule("--no-state", "AT-OAUTH-011")
+
+
+class TokenPassthroughTest(OAuthBase):
+    def test_a_token_for_this_server_is_refused_upstream(self) -> None:
+        upstream_port = free_port()
+        proc = start_server(upstream_port, "--oauth-audience", "mcp://upstream")
+        self.addCleanup(stop_server, proc)
+        result = self.run_harness(upstream_port=upstream_port)
+        self.assertNotIn("AT-OAUTH-012", self.checks(result))
+
+    def test_an_upstream_that_accepts_the_token_is_reported(self) -> None:
+        upstream_port = free_port()
+        proc = start_server(upstream_port, "--oauth-audience", "mcp://upstream", "--no-audience-check")
+        self.addCleanup(stop_server, proc)
+        result = self.run_harness(upstream_port=upstream_port)
+        self.assertIn("AT-OAUTH-012", self.checks(result))
+
+
+class WithoutSigningKeyTest(OAuthBase):
+    def test_claim_probes_are_skipped_not_passed(self) -> None:
+        os.environ.pop("MCP_ATTEST_OAUTH_KEY", None)
+        result = self.run_harness()
+        checks = self.checks(result)
+        self.assertNotIn("AT-OAUTH-004", checks, "an expired token was accepted")
+        self.assertNotIn("AT-OAUTH-005", checks, "a wrong-audience token was accepted")
+        skipped = " ".join(result.skipped)
+        self.assertIn("AT-OAUTH-004", skipped)
+        self.assertIn("signing key", skipped)
+
+
+class OAuthWithoutPolicyTest(unittest.TestCase):
+    """A policy with no oauth block must not produce OAuth findings."""
+
+    def test_the_oauth_checks_do_not_run(self) -> None:
+        port = free_port()
+        proc = start_server(port)
+        self.addCleanup(stop_server, proc)
+        os.environ["ALICE_TOKEN"] = make_token("alice")
+        os.environ["LEAD_TOKEN"] = make_token("lead", "orders:read orders:write")
+        self.addCleanup(os.environ.pop, "ALICE_TOKEN", None)
+        self.addCleanup(os.environ.pop, "LEAD_TOKEN", None)
+
+        raw = json.loads(POLICY.read_text(encoding="utf-8"))
+        raw.pop("oauth")
+        policy = policy_from_dict(raw)
+        target = parse_target(None, "http://127.0.0.1:%d/mcp" % port, timeout=15.0)
+        result = run_conformance(target, policy, RunOptions(timeout=15.0))
+        self.assertEqual([], [f for f in result.findings if f.check.startswith("AT-OAUTH-")])
+        self.assertTrue(any("no oauth block" in note for note in result.skipped))
+
+
+if __name__ == "__main__":
+    unittest.main()
