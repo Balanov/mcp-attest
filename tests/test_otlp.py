@@ -1,12 +1,16 @@
 """Tests for the OTLP input path."""
 
 import json
+import os
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 from mcp_attest.otlp import load_otlp, otlp_to_trace, span_to_event
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class OtlpTest(unittest.TestCase):
@@ -57,6 +61,31 @@ class OtlpTest(unittest.TestCase):
         trace = otlp_to_trace({})
         self.assertEqual(trace.tool_calls, [])
         self.assertEqual(trace.warnings, [])
+
+
+class OtlpCliTest(unittest.TestCase):
+    """The export has to be reachable from the command line, not only as a library."""
+
+    def _run(self, *args):
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(ROOT / "src")
+        return subprocess.run(
+            [sys.executable, "-m", "mcp_attest", *args],
+            capture_output=True, text=True, env=env, cwd=str(ROOT),
+        )
+
+    def test_check_reads_an_otlp_export(self):
+        proc = self._run("check", "--policy", "examples/policy.json",
+                         "--otlp", str(FIXTURES / "otlp.json"))
+        self.assertEqual(proc.returncode, 1, proc.stderr)
+        self.assertIn("C6", proc.stdout)
+        self.assertIn("summary:", proc.stdout)
+        self.assertIn("not an MCP span", proc.stderr)
+
+    def test_check_needs_exactly_one_source(self):
+        proc = self._run("check", "--policy", "examples/policy.json")
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("--trace", proc.stderr)
 
 
 if __name__ == "__main__":

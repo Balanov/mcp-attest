@@ -4,7 +4,15 @@
 
 ### Added
 
-- Nothing yet: the next release starts from the 1.0.0 line.
+- `attest check --otlp PATH` reads the trace from an OpenTelemetry export
+  instead of a JSONL trace file, so a team that already emits OTel GenAI spans
+  can check them against its policy without adding a second instrumentation
+  path. The reader was contributed in #3; this wires it into the command line.
+
+### Fixed
+
+- The OTLP reader merged in #3 was only reachable as a library. `attest check`
+  now accepts it, and the two sources are mutually exclusive.
 
 
 All notable changes to this project are documented in this file.
