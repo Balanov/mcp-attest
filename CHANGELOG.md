@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-11-14
+
+### Added
+
+- `docs/POSITIONING.md` — what the tool solves, the evidence with every source
+  checked, the tools that already judge recorded MCP sessions, and the claims
+  this project cannot make.
+
+### Changed
+
+- The README now states plainly that other tools already audit recorded MCP
+  sessions, and says what actually makes this one different: one offline
+  question, zero dependencies, no proxy, no SDK.
+- Research notes: every number carries its denominator and a working link. Two
+  figures were corrected — the ~200,000 instances are an SDK stdio design flaw,
+  not exposed servers, and the CVE count is now cited to its source.
+- The landing page attributes the survey to Pipelock and the design
+  considerations to NSA/CISA, and links to the NSA mirror that does not block
+  automated fetches.
+
 ## [0.1.4] - 2026-11-13
 
 ### Changed
