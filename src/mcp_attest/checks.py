@@ -58,9 +58,12 @@ class Finding:
     evidence: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        from .rules import RULES as LIVE_RULES
+
+        live = LIVE_RULES.get(self.check)
         return {
             "check": self.check,
-            "rule": RULES.get(self.check, ""),
+            "rule": live.name if live else RULES.get(self.check, ""),
             "severity": self.severity,
             "title": self.title,
             "detail": self.detail,

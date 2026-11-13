@@ -5,6 +5,69 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-11-14
+
+This release repoints the product. Version 0.1.x judged a recorded session
+against a policy; 1.0.0 tests a live server against the policy, as every
+identity in it, and produces evidence a third party can verify offline.
+
+### Added
+
+- `attest test` — the primary command. Connects to a live MCP server over
+  stdio or Streamable HTTP, presents each identity from the policy, sends
+  real calls and reports every point where the server's decision differs
+  from the policy's decision.
+- A JSON-RPC 2.0 client written for this tool: stdio and Streamable HTTP,
+  the full `initialize` handshake, paginated `tools/list`, SSE responses and
+  the `Mcp-Session-Id` header. No SDK, no dependencies.
+- The authorization matrix: the policy is the expected side, the server is
+  the observed side, and every identity × tool pair is compared. Arguments
+  are derived from the tool's own schema.
+- Policy `cases` — explicit expectations for what a generated probe cannot
+  express, such as an identifier owned by another principal.
+- Policy `probes` — pinned arguments per tool, which is also how an operator
+  opts in to calling a tool that changes state.
+- Policy `identity` — how each client presents itself, with `headers` for
+  HTTP and `env` for stdio, and `${VAR}` expansion so credentials stay out
+  of the file.
+- Twelve live rules, each mapped to a test in the OWASP MCP Security
+  Testing Guide: `AT-AUTHZ-001`, `AT-AUTHZ-002`, `AT-TOKEN-001`,
+  `AT-POISON-001`, `AT-DRIFT-001`, `AT-SECRET-001`, `AT-FAILCLOSED-001`,
+  `AT-INJECT-001`, `AT-SINK-001`, `AT-SCHEMA-001`, `AT-APPROVAL-001`,
+  `AT-ERROR-001`.
+- Token validation probes: a malformed token, a token with a tampered
+  signature and an expired `alg: none` JWT.
+- Tool-manifest snapshots and drift detection against an approved baseline
+  (`--baseline`, `--update-baseline`).
+- Evidence bundles: one record per call with request, response, identity,
+  timestamp, expected decision and observed decision, secrets redacted,
+  hash-chained, optionally HMAC-signed, with `attest verify` to check them
+  offline.
+- `--sarif` output in SARIF 2.1.0, so findings land in GitHub code
+  scanning.
+- `attest init --command/--url` — scaffold a policy from a live tool list.
+- Example servers: `examples/servers/orders_server.py` (a vulnerable and a
+  fixed variant over stdio) and `examples/servers/orders_http_server.py`
+  (over Streamable HTTP, with switches for weak and missing token checks).
+- The test suite now starts real MCP servers and asserts on what the
+  harness finds.
+
+### Changed
+
+- The GitHub Action gained a `test` mode, an optional `baseline`, SARIF
+  output and an evidence bundle.
+- The README, the Russian README, `SPEC.md`, `docs/POSITIONING.md` and
+  `docs/RESEARCH.md` were rebuilt around the new job.
+- The positioning document now names the tools that appeared in this space
+  since 0.1 — mcp-assert, mcp-fence, mcp-fuzz, mcp-server-fuzzer, mcpsec,
+  MCTS, OpenTrustBench — and states what each does better.
+
+### Unchanged
+
+- `attest check`, `attest receipts`, `attest shadow` and the trace rules
+  `C1`–`C9` keep their behaviour and their format.
+- Zero runtime dependencies. Python 3.10+ and the standard library.
+
 ## [0.1.5] - 2026-11-14
 
 ### Added

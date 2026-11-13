@@ -1,12 +1,14 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — инструмент проверки соответствия для контроля доступа агентов MCP. Политика запрещает, шлюз разрешил: девять проверок переигрывают ваш журнал по вашим же правилам." width="100%">
-  <p><strong>Докажите, что ваша политика MCP действительно применяется.</strong></p>
-  <p>Два входных файла · девять проверок · ноль зависимостей · MIT</p>
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — харнесс соответствия авторизации для MCP-серверов. Одна команда, все личности, реальные вызовы, доказательства для аудитора." width="100%">
+  <p><strong>Докажите, что ваш MCP-сервер отказывает в том, в чём обязан.</strong></p>
+  <p>Одна команда · все личности · реальные вызовы · двенадцать правил · ноль зависимостей · MIT</p>
   <p>
     <a href="#установка">Установка</a> ·
     <a href="#запуск">Запуск</a> ·
-    <a href="#девять-проверок">Девять проверок</a> ·
-    <a href="#использование-в-ci">CI</a> ·
+    <a href="#правила">Правила</a> ·
+    <a href="#файл-политики">Политика</a> ·
+    <a href="#доказательства">Доказательства</a> ·
+    <a href="#ci">CI</a> ·
     <a href="SPEC.md">Спецификация</a> ·
     <a href="https://balanov.pro/mcp-attest/">Сайт</a> ·
     <a href="README.md">English</a>
@@ -14,48 +16,49 @@
   <p>
     <a href="https://github.com/Balanov/mcp-attest/actions/workflows/ci.yml"><img src="https://github.com/Balanov/mcp-attest/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="https://github.com/Balanov/mcp-attest/releases/latest"><img src="https://img.shields.io/github/v/release/Balanov/mcp-attest" alt="Последний релиз"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="Лицензия MIT"></a>
     <a href="https://pypi.org/project/mcp-attest/"><img src="https://img.shields.io/pypi/v/mcp-attest.svg?color=2fd9a6" alt="Версия на PyPI"></a>
-    <a href="https://pypi.org/project/mcp-attest/"><img src="https://img.shields.io/pypi/pyversions/mcp-attest.svg" alt="Python 3.10+"></a>
   </p>
 </div>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/demo.gif" alt="Вывод mcp-attest check на записанном журнале: C6 — политика запретила вызов, а шлюз разрешил; C9 — описание инструмента изменилось после одобрения; summary critical=7 high=6" width="100%">
-  <p><sub>Реальный вывод на <code>examples/session.jsonl</code>. Код возврата 1 означает блокирующую находку. <a href="examples/">Примеры</a> · <a href="docs/RESEARCH.md">Почему это нужно</a>.</sub>
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/demo.gif" alt="Реальный вывод mcp-attest против уязвимого MCP-сервера: alice смогла вызвать refund_order, хотя политика запрещает; описание инструмента скрывает инструкцию от пользователя; экспорт возвращает ключ AWS" width="100%">
+  <p><sub>Реальный вывод на встроенном уязвимом сервере. Код возврата 1 — есть блокирующая находка. <a href="examples/">Примеры</a> · <a href="docs/POSITIONING.md">Почему это существует</a>.</sub>
 </div>
 
-`mcp-attest` — инструмент проверки соответствия для контроля доступа агентов MCP. Он берёт политику, которую вы написали, и журнал того, что действительно произошло, и показывает каждое место, где они расходятся.
+`mcp-attest` проверяет живой MCP-сервер по написанному вами контролю доступа. Он подключается как каждая личность из вашей политики, отправляет настоящие вызовы и показывает все места, где решение сервера расходится с решением, которое требует ваша политика.
 
-Это не шлюз. Он не стоит в рабочем пути запроса и никогда не держит учётные данные вышестоящего сервера. Он читает улики, которые уже существуют.
+Это не шлюз. Он ничего не блокирует. Он доказывает, что делает ваш сервер.
 
-## Почему mcp-attest
+## Почему mcp-attest?
 
-- **Находит правило, которое приняли, но не применили.** C6 заново вычисляет вашу политику локально по каждому записанному вызову. Вызов, который политика запрещает, а шлюз разрешил, не виден ни в одной панели: панели показывают то, во что поверил шлюз.
-- **Улики, а не мнение.** Каждая находка содержит точный инструмент, аргументы и решение, из которых она получилась, и способ исправления.
-- **Офлайн по построению.** Ни сетевых вызовов, ни телеметрии, ни аккаунта. Журналы содержат полезную нагрузку и остаются там, где лежат.
-- **Коды возврата, а не ощущения.** `0` — чисто, `1` — блокирующая находка, `2` — плохие входные данные. Работает как ворота в CI без обёртки.
-- **Ноль зависимостей.** Python 3.10+ и стандартная библиотека.
-- **Квитанции, которые не подделать.** Необязательная хеш-цепочка с подписью HMAC для каждого разрешённого вызова.
+- **Проверяется решение, а не описание.** Сканер скажет, как выглядит описание инструмента. `mcp-attest` скажет, может ли `alice` вызвать `refund_order` — вызвав его от имени `alice` и посмотрев на ответ.
+- **Матрица строится сама.** Вы пишете, кому что можно. Харнесс выводит все пары «личность × инструмент», берёт аргументы из схемы и сравнивает. Добавление инструмента не означает переписывание тестов.
+- **Детерминированно.** Без модели, без API-ключа, без сети кроме проверяемого сервера. Один и тот же результат при каждом запуске — именно поэтому это пригодно как ворота.
+- **Доказательства, а не мнение.** Каждый вызов записан: запрос, ответ, личность, время, решение политики. Записи соединены хеш-цепью и при желании подписаны HMAC — аудитор проверит пакет офлайн, не доверяя машине, которая его сделала.
+- **Коды возврата, а не ощущения.** `0` чисто, `1` блокирующая находка, `2` плохой ввод. Готовые ворота для CI без обёрточного скрипта.
+- **Ноль зависимостей.** Python 3.10+ и стандартная библиотека. JSON-RPC мы говорим сами, не тащим SDK в ваш пайплайн.
 
-## Где мы находимся
+## Где это находится на рынке
 
-Записанные MCP-сессии уже разбирают другие инструменты: [agent-strace](https://pypi.org/project/agent-strace/) сверяет сессию с файлом политики, [mcpsnoop](https://github.com/kerlenton/mcpsnoop) валит CI по записанным сессиям, [mcp-conformance](https://github.com/tomtom215/mcp-conformance) проверяет соответствие спецификации, [mcp-traceguard](https://github.com/tiempo0206/mcp-traceguard) сравнивает с базой одобренного, [assay](https://crates.io/crates/assay-policy) enforcement-ит в рантайме и пакует evidence, [snulbug](https://pypi.org/project/snulbug/) выучивает политику из трафика.
+Пространство тестирования MCP забито, и делать вид иначе было бы нечестно. [mcp-assert](https://github.com/blackwell-systems/mcp-assert) линтит, тестирует и фаззит серверы по настоящим транспортам с YAML-assertions; [mcp-fence](https://github.com/DaoyuanLi2816/mcp-fence) сканирует конфигурацию, инспектирует и фаззит в Docker-песочнице; [mcp-fuzz](https://github.com/shriramkv/mcp-fuzz) оценивает устойчивость протокола; [MCP-Scan](https://github.com/invariantlabs-ai/mcp-scan) ищет отравление в метаданных инструментов; [promptfoo](https://www.promptfoo.dev/docs/red-team/mcp-security-testing/) red-team-ит агентов с моделью в контуре; [mcpsnoop](https://github.com/kerlenton/mcpsnoop) и [mcp-conformance](https://github.com/tomtom215/mcp-conformance) судят записанные сессии.
 
-Честно: это не более лучшая версия их. Это меньше и уже — один офлайн-вопрос, ноль зависимостей, без прокси, без SDK, без сервера, — и он закрывается меньше чем за секунду на закоммиченном трейсе. [Полное сравнение, источники и заявления, которые мы делать не можем](docs/POSITIONING.md).
+Чего не делает никто из них — то, что [OWASP MCP Security Testing Guide](https://github.com/OWASP/MCP-Security-Testing-Guide) ставит первым в минимальном автоматизированном наборе: **матрицу авторизации** — каждый инструмент, роль, scope, тенант и объект, включая идентификаторы, принадлежащие другому человеку, — и **проверку токенов**. Гайд называет нужный инструмент категорией: *«Policy-as-code test harness — asserts allow/deny decisions against the documented policy, with stable reason codes»*.
+
+Это и есть продукт. [Полное сравнение, источники и утверждения, которые мы делать не можем](docs/POSITIONING.md).
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="Поток mcp-attest: политика и журнал переигрываются локально и сравниваются, на выходе — находки, код возврата и цепочка квитанций" width="100%">
-  <p><sub>Ничего не проксируется. Улика — это журнал. <a href="SPEC.md">Полная спецификация</a>.</sub>
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="Схема mcp-attest: политика — ожидаемая сторона, живой сервер — наблюдаемая, расхождение между ними и есть находка" width="100%">
+  <p><sub>Политика — ожидаемая сторона. Сервер — наблюдаемая. Расхождение между ними и есть находка. <a href="SPEC.md">Полная спецификация</a>.</sub>
 </div>
 
-**[Сайт](https://balanov.pro/mcp-attest/) · [Спецификация](SPEC.md) · [Позиционирование](docs/POSITIONING.md) · [Исследование](docs/RESEARCH.md) · [MIT](LICENSE)**
+**[Сайт](https://balanov.pro/mcp-attest/) · [Спецификация](SPEC.md) · [Позиционирование](docs/POSITIONING.md) · [Исследование](docs/RESEARCH.md) · [Лицензия MIT](LICENSE)**
 
 ## Установка
 
 ```sh
 pipx install mcp-attest          # изолированный CLI
-uvx mcp-attest check --help      # разовый запуск
+uvx mcp-attest test --help       # разовый запуск
 pip install mcp-attest           # в виртуальное окружение
 ```
 
@@ -71,120 +74,137 @@ python -m unittest discover -s tests -v
 ## Запуск
 
 ```sh
-attest init                                            # создать заготовку политики
-attest check --policy examples/policy.json --trace examples/session.jsonl
+attest init --command "python my_server.py"        # собрать политику по живым инструментам
+attest test --command "python my_server.py" --policy policy.json
 ```
+
+Против встроенного уязвимого сервера:
 
 ```text
-!! [CRITICAL] C6 Policy denies 'shell__exec' but the gateway allowed it
-          Local evaluation of the policy says deny (tool is on the deny list); the trace
-          records allow ('argument-conditioned rule matched'). This is the 'policy accepted
-          but not enforced' failure mode — a rule that is registered but never applied.
-          fix: Replay the call against the gateway with the same arguments and fix
-               the rule binding, then add this call as a regression case in CI.
+!! [CRITICAL] AT-POISON-001 tool 'refund_order' hides an instruction in its description
+          The description contains text that matches 'hides the call': 'do not tell the user'.
+          A tool definition is read by the model, so this is an instruction channel that the
+          user never sees.
+          fix: Remove the instruction from the description. The tool's description should state
+               what it does, not what the model must do.
 
-summary: critical=7, high=6
+!! [CRITICAL] AT-AUTHZ-001 'alice' was allowed to call 'refund_order'
+          The policy denies 'refund_order' for this identity (tool is on the deny list), but the
+          server executed the call. This is broken access control, not a policy tuning problem.
+          fix: Enforce the decision inside the server's tool dispatcher, before the handler runs.
+
+!! [CRITICAL] AT-AUTHZ-002 case AUTHZ-CROSS-01: 'alice' reached an object it must not reach
+          The case expects 'get_order' to be refused for 'alice' (order B-77 belongs to bob,
+          not to alice), but the server executed the call.
+          fix: Check ownership of the object at the point of use, not only the role of the caller.
+
+summary: critical=4, high=2, medium=4, low=3
+tested: 2 identities, 6 tools, 12 calls
 ```
 
-Код возврата `1` означает блокирующую находку. `--json` печатает находки в машинном виде, `--strict` считает блокирующими и высокие.
+Код возврата `1` означает блокирующую находку. `--json` печатает машиночитаемые находки, `--sarif` пишет SARIF 2.1.0 для code scanning, `--strict` считает блокирующими и medium.
 
-| Команда | Что делает |
+| Команда | Назначение |
 |---|---|
-| `attest init` | Пишет заготовку политики |
-| `attest check` | Сверяет журнал с политикой |
-| `attest receipts` | Строит и проверяет хеш-цепочку квитанций |
-| `attest shadow` | Показывает серверы, доступные агенту в обход шлюза |
-| `attest rules` | Печатает список применяемых правил |
+| `attest test` | Проверить живой сервер по политике, как каждая личность из неё |
+| `attest init` | Написать стартовую политику, по желанию — по живому списку инструментов |
+| `attest verify` | Проверить пакет доказательств офлайн |
+| `attest check` | Разобрать записанный трейс по политике |
+| `attest receipts` | Построить и проверить хеш-цепь квитанций |
+| `attest shadow` | Показать серверы, доступные агенту в обход шлюза |
+| `attest rules` | Показать список правил |
 
-## Девять проверок
+## Правила
 
-| ID | Правило | Что ловит |
-|---|---|---|
-| C1 | default-deny | Незаданный список разрешений, молча означающий «разрешить всё» |
-| C2 | list/call parity | Инструмент скрыт из `tools/list`, но вызывается по имени |
-| C3 | narrowing only | Покомпонентный контроль, расширяющий права клиента |
-| C4 | credential separation | Токен клиента, дословно переданный вышестоящему серверу |
-| C5 | fail closed | Вызов разрешён из-за ошибки при проверке политики |
-| C6 | enforcement parity | Политика запрещает, шлюз разрешил |
-| C7 | shadow MCP | Сервер, доступный агенту в обход шлюза |
-| C8 | receipt chain | Разрешённые вызовы без проверяемой квитанции или с разорванной цепочкой |
-| C9 | description integrity | Описание инструмента изменилось после одобрения (rug pull) |
+Живые правила работают против сервера, на который вы их направили. Каждое отображается на тест из OWASP MCP Security Testing Guide.
 
-## Входные файлы
+| ID | Правило | OWASP | Что ловит |
+|---|---|---|---|
+| AT-AUTHZ-001 | политика соблюдается для каждой личности | MCPSTG-AUTHZ-01 | Сервер разрешает то, что политика запрещает |
+| AT-AUTHZ-002 | чужие объекты отклоняются | MCPSTG-AUTHZ-03 | Валидный идентификатор другого принципала |
+| AT-TOKEN-001 | токены проверяются | MCPSTG-AUTHN-04 | Некорректный, подделанный или просроченный токен проходит |
+| AT-POISON-001 | нет скрытых инструкций | MCPSTG-TOOL-01 | Инструкции, спрятанные в метаданных инструмента |
+| AT-DRIFT-001 | манифест не меняется | MCPSTG-SUPP-01 | Инструмент добавлен или изменён после одобрения (rug pull) |
+| AT-SECRET-001 | в выводе нет секретов | MCPSTG-SECR-01 | Учётные данные в результате инструмента |
+| AT-FAILCLOSED-001 | отказ при неверном вводе | MCPSTG-CONF-01 | Вызов выполнен без обязательных аргументов |
+| AT-INJECT-001 | в выводе нет инструкций модели | MCPSTG-TOOL-01 | Инструкции модели внутри результата инструмента |
+| AT-SINK-001 | стоки исполнения ограничены | MCPSTG-TOOL-02 | Ввод модели доходит до шелла, файла или URL |
+| AT-SCHEMA-001 | строгие схемы | MCPSTG-TOOL-04 | Аргументы без типов, границ и структуры |
+| AT-APPROVAL-001 | риск и подтверждение объявлены | MCPSTG-AUTHZ-02 | Инструмент с побочными эффектами без риска в аннотациях |
+| AT-ERROR-001 | чистые сообщения об ошибках | MCPSTG-CONF-03 | Стек-трейсы и внутренние пути в ошибках |
 
-### Политика
+Правила по трейсу работают с записанной сессией и не менялись с 0.1: `C1` default-deny, `C2` list/call parity, `C3` narrowing only, `C4` credential separation, `C5` fail closed, `C6` enforcement parity, `C7` shadow MCP, `C8` receipt chain, `C9` description integrity.
+
+## Файл политики
+
+В одном файле обе стороны сравнения: что каждой личности можно вызывать и как она себя представляет.
 
 ```json
 {
   "version": 1,
   "default_decision": "deny",
   "clients": {
-    "ci-bot": {
+    "alice": {
       "tools": {
-        "allow": ["fs__read_file", "fs__list_directory"],
-        "deny": ["fs__write_file", "fs__delete_everything"],
-        "conditional": [
-          {
-            "tool": "fs__write_file",
-            "allow_when": { "path": { "starts_with": "./out/" } },
-            "action": "allow",
-            "reason": "writes are allowed only inside ./out/"
-          }
-        ]
+        "allow": ["list_orders", "get_order"],
+        "deny": ["refund_order"]
       },
-      "egress_hosts": ["api.internal.example.com"]
+      "identity": {
+        "headers": { "Authorization": "Bearer ${ALICE_TOKEN}" }
+      }
     }
   },
-  "gateway": { "mode": "routed", "fail_closed": true, "passthrough_credentials": false },
-  "receipts": { "required": true, "key_env": "MCP_ATTEST_KEY" }
+  "cases": [
+    {
+      "id": "AUTHZ-CROSS-01",
+      "identity": "alice",
+      "tool": "get_order",
+      "args": { "order_id": "B-77" },
+      "expect": "deny",
+      "reason": "order B-77 belongs to bob, not to alice"
+    }
+  ],
+  "probes": {
+    "get_order": { "order_id": "A-1" }
+  }
 }
 ```
 
-Операторы условий: `eq`, `not_eq`, `starts_with`, `ends_with`, `contains`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`, `glob`, `regex`. Строка, оканчивающаяся на `/`, — это префикс; строка с `*` — это glob.
+- **identity** — как себя представить. `headers` для HTTP-серверов, `env` для stdio. `${VAR}` подставляется из окружения, поэтому секреты не лежат в файле.
+- **cases** — явные ожидания, которых не выразить сгенерированным пробником: идентификатор чужого объекта, сумма выше порога, инструмент, который обязан быть отклонён.
+- **probes** — аргументы для инструмента. Фиксация аргументов — это ещё и способ разрешить вызов инструмента, меняющего состояние.
 
-### Журнал
-
-Новые строки JSON, по событию на строку. Такой файл может писать любой прокси, агентный каркас или шаг CI.
-
-```jsonl
-{"type":"tools_list","actor":"ci-bot","tools":[{"name":"fs__read_file","description_sha256":"a1b2…"}]}
-{"type":"tool_call","actor":"ci-bot","tool":"fs__read_file","args":{"path":"/srv/README.md"},"decision":"allow","upstream":true,"reason":"tool is on the allow list"}
-{"type":"client_servers","client":"claude-code","servers":["fs","git"]}
-{"type":"gateway_route","server":"fs","tools":["read_file","list_directory"]}
-```
-
-Полная спецификация: [SPEC.md](SPEC.md).
-
-## Квитанции
+## Доказательства
 
 ```sh
-export MCP_ATTEST_KEY=…
-attest receipts --trace examples/session.jsonl --out receipts.jsonl
-# chain: ok (6 receipts, key=yes)
+attest test --url https://mcp.example.com/mcp --policy policy.json --evidence bundle.json
+attest verify --bundle bundle.json
+# bundle: ok (14 records, key=yes)
 ```
 
-Каждая квитанция фиксирует предыдущую, поэтому удаление или перестановка квитанции рвёт цепочку. С заданным `MCP_ATTEST_KEY` каждая квитанция дополнительно подписывается HMAC-SHA256, и проверяющий может заметить правку, не имея доступа к шлюзу.
+В каждой записи — запрос, ответ, личность, время, ожидаемое и наблюдаемое решения; всё, похожее на учётные данные, редактируется. Записи соединены хеш-цепью и при наличии `MCP_ATTEST_KEY` подписаны HMAC-SHA256.
 
-Это намеренно не PKI. Инструмент отвечает на вопрос, который действительно задаёт расследователь: *были ли в этой сессии именно эти вызовы, именно в этом порядке, и не менялось ли что-то с тех пор?*
+Именно это превращает фразу «контроль доступа агента у нас работает» из ответа на вопрос анкеты в артефакт, который может проверить третья сторона.
 
-## Использование в CI
+## CI
 
 ```yaml
 - uses: Balanov/mcp-attest@v0
   with:
     policy: .attest/policy.json
-    trace: .attest/trace.jsonl
+    command: "python my_server.py"
+    sarif: mcp-attest.sarif
 ```
 
-Экшен валит джобу при любой критичной или высокой находке, поэтому «наша политика для агентов применяется» — это то, что доказывает пайплайн, а не то, о чём спрашивает анкета по безопасности.
+Action роняет джобу на любой critical или high находке, а SARIF попадает в code scanning рядом с остальными результатами безопасности репозитория.
 
 ## Чем mcp-attest не является
 
-- Не шлюз, не прокси и не точка enforcement: он не может заблокировать вызов.
-- Не сканер: он не подключается к вашему MCP-серверу и не шлёт пробных запросов.
-- Не PKI: хеш-цепочка и HMAC доказывают порядок и целостность, но не личность.
-- Не редактор политик: он читает ту политику, которая уже есть.
-- Не облачный сервис: без аккаунта, без сетевых вызовов, без телеметрии.
+- Не шлюз, не прокси и не точка enforcement. Он не может заблокировать вызов.
+- Не сканер. Он не оценивает схему или описание — он нагружает сервер.
+- Не red-team на модели. Здесь нет ни одного вызова LLM, значит нет ни недетерминированности, ни счетов за API.
+- Не PKI. Хеш-цепь и HMAC доказывают порядок и целостность, а не личность.
+- Не облачный сервис. Без аккаунта, без телеметрии, без сети кроме проверяемого сервера.
 
 ## Разработка
 
@@ -193,8 +213,8 @@ python -m pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 ```
 
-CI гоняет тесты на Python 3.10–3.13 и публикует пакет на PyPI из тегированного релиза через trusted publishing: токена API в репозитории нет.
+Тесты поднимают настоящие MCP-серверы — один по stdio, один по HTTP, один со сломанной проверкой токенов — и проверяют, что именно находит харнесс. CI гоняет их на Python 3.10–3.13 и публикует пакет на PyPI из тега через trusted publishing, без API-токена в репозитории.
 
 ## Лицензия
 
-[MIT](LICENSE). Копируйте, меняйте, встраивайте, публикуйте.
+[MIT](LICENSE). Берите, меняйте, встраивайте, продавайте.

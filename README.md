@@ -1,11 +1,13 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — the conformance harness for MCP agent access control. Policy says deny, the gateway allowed it: nine checks replay your trace against your own rules." width="100%">
-  <p><strong>Prove that your MCP policy actually enforces.</strong></p>
-  <p>Two input files · nine checks · zero runtime dependencies · MIT</p>
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — the authorization conformance harness for MCP servers. One command, every identity, real calls, evidence you can hand to an auditor." width="100%">
+  <p><strong>Prove that your MCP server denies what it must deny.</strong></p>
+  <p>One command · every identity · real calls · twelve rules · zero dependencies · MIT</p>
   <p>
     <a href="#install">Install</a> ·
     <a href="#run-it">Run it</a> ·
-    <a href="#the-nine-checks">The nine checks</a> ·
+    <a href="#the-rules">The rules</a> ·
+    <a href="#the-policy-file">Policy</a> ·
+    <a href="#evidence">Evidence</a> ·
     <a href="#use-it-in-ci">CI</a> ·
     <a href="SPEC.md">Specification</a> ·
     <a href="https://balanov.pro/mcp-attest/">Website</a> ·
@@ -21,32 +23,34 @@
 </div>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/demo.gif" alt="mcp-attest check output on a recorded trace: C6 policy denied the call but the gateway allowed it, C9 tool definition changed after approval, summary critical=7 high=6" width="100%">
-  <p><sub>Real output from <code>examples/session.jsonl</code>. Exit code 1 means a blocking finding. <a href="examples/">Examples</a> · <a href="docs/RESEARCH.md">Why this exists</a>.</sub>
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/demo.gif" alt="mcp-attest test output against a vulnerable MCP server: alice was allowed to call refund_order although the policy denies it, the tool description hides an instruction from the user, the ledger export returns an AWS key" width="100%">
+  <p><sub>Real output from the bundled vulnerable server. Exit code 1 means a blocking finding. <a href="examples/">Examples</a> · <a href="docs/POSITIONING.md">Why this exists</a>.</sub>
 </div>
 
-`mcp-attest` is a conformance harness for MCP agent access control. It takes the policy you wrote and the trace of what actually happened, and reports every point where they disagree.
+`mcp-attest` tests a live MCP server against the access control you wrote. It connects as each identity in your policy, sends real calls, and reports every place where the server's decision differs from the decision your policy requires.
 
-It is not a gateway. It does not sit on the request path, and it never holds a credential for the upstream server. It reads evidence that already exists.
+It is not a gateway. It cannot block anything. It proves what your server does.
 
 ## Why mcp-attest?
 
-- **It catches the accepted-but-not-enforced rule.** C6 re-evaluates your policy locally against every recorded call. A call your policy denies but the gateway allowed is invisible in every dashboard, because dashboards show what the gateway believed.
-- **Evidence, not opinion.** Every finding carries the exact tool, arguments and decision that produced it, and the fix.
-- **Offline by construction.** No network calls, no telemetry, no account. Traces carry payloads and stay where they are.
+- **It tests the decision, not the definition.** A scanner tells you what a tool description looks like. `mcp-attest` tells you whether `alice` may call `refund_order` — by calling it, as `alice`, and looking at what came back.
+- **The matrix is generated, not typed.** Write who may call what. The harness derives every identity × tool pair, derives the arguments from the schema, and compares. Adding a tool to your server does not mean rewriting the test suite.
+- **Deterministic.** No model, no API key, no network beyond the server under test. The same policy and the same server give the same report every time, which is what makes it usable as a gate.
+- **Evidence, not opinion.** Every call is recorded with the request, the response, the identity, the timestamp and the policy decision. The records are hash-chained and optionally HMAC-signed, so an auditor can verify the bundle offline without trusting the machine that produced it.
 - **Exit codes, not vibes.** `0` clean, `1` blocking finding, `2` bad input. It is a CI gate without a wrapper script.
-- **Zero dependencies.** Python 3.10+ and the standard library.
-- **Tamper-evident receipts.** Optional hash-chained, HMAC-signed receipts for every allowed call.
+- **Zero dependencies.** Python 3.10+ and the standard library. It speaks JSON-RPC itself instead of pulling an SDK into your pipeline.
 
 ## Where this sits
 
-Recorded MCP sessions are already judged by other tools: [agent-strace](https://pypi.org/project/agent-strace/) audits a session against a policy file, [mcpsnoop](https://github.com/kerlenton/mcpsnoop) gates CI on captured sessions, [mcp-conformance](https://github.com/tomtom215/mcp-conformance) checks the specification, [mcp-traceguard](https://github.com/tiempo0206/mcp-traceguard) compares against an approved baseline, [assay](https://crates.io/crates/assay-policy) enforces at runtime and packages evidence, [snulbug](https://pypi.org/project/snulbug/) learns policy from traffic.
+The MCP testing space is crowded, and pretending otherwise would be dishonest. [mcp-assert](https://github.com/blackwell-systems/mcp-assert) lints, tests and fuzzes servers over real transports with YAML assertions; [mcp-fence](https://github.com/DaoyuanLi2816/mcp-fence) scans configuration, inspects and fuzzes with a Docker sandbox; [mcp-fuzz](https://github.com/shriramkv/mcp-fuzz) grades protocol robustness; [MCP-Scan](https://github.com/invariantlabs-ai/mcp-scan) scans tool metadata for poisoning; [promptfoo](https://www.promptfoo.dev/docs/red-team/mcp-security-testing/) red-teams agents and MCP servers with a model in the loop; [mcpsnoop](https://github.com/kerlenton/mcpsnoop) and [mcp-conformance](https://github.com/tomtom215/mcp-conformance) judge recorded sessions.
 
-The honest summary: this is not a better version of them. It is smaller and narrower — one offline question, zero dependencies, no proxy, no SDK, no server — and it answers it in under a second on a committed trace. [Full comparison, sources and the claims we cannot make](docs/POSITIONING.md).
+What none of them does is the thing the [OWASP MCP Security Testing Guide](https://github.com/OWASP/MCP-Security-Testing-Guide) puts first in its minimum automated test set: **the authorization matrix** — every tool, role, scope, tenant and object, including identifiers that belong to someone else — and **token validation**. The guide names the tool it expects as a category: *"Policy-as-code test harness — asserts allow/deny decisions against the documented policy, with stable reason codes."*
+
+That is this product. [Full comparison, sources and the claims we cannot make](docs/POSITIONING.md).
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="mcp-attest flow: the policy and the trace are replayed locally and compared, producing findings, an exit code and a receipt chain" width="100%">
-  <p><sub>Nothing is proxied. The trace is the evidence. <a href="SPEC.md">Full specification</a>.</sub>
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="mcp-attest flow: the policy is the expected side, the live server is the observed side, the comparison produces findings, an exit code and a signed evidence bundle" width="100%">
+  <p><sub>The policy is the expected side. The server is the observed side. The gap between them is the finding. <a href="SPEC.md">Full specification</a>.</sub>
 </div>
 
 **[Website](https://balanov.pro/mcp-attest/) · [Specification](SPEC.md) · [Positioning](docs/POSITIONING.md) · [Research notes](docs/RESEARCH.md) · [MIT license](LICENSE)**
@@ -55,7 +59,7 @@ The honest summary: this is not a better version of them. It is smaller and narr
 
 ```sh
 pipx install mcp-attest          # isolated CLI
-uvx mcp-attest check --help      # one-shot
+uvx mcp-attest test --help       # one-shot
 pip install mcp-attest           # into a virtualenv
 ```
 
@@ -71,101 +75,117 @@ python -m unittest discover -s tests -v
 ## Run it
 
 ```sh
-attest init                                            # write a starter policy
-attest check --policy examples/policy.json --trace examples/session.jsonl
+attest init --command "python my_server.py"        # scaffold a policy from the live tools
+attest test --command "python my_server.py" --policy policy.json
 ```
+
+Against the bundled vulnerable server:
 
 ```text
-!! [CRITICAL] C6 Policy denies 'shell__exec' but the gateway allowed it
-          Local evaluation of the policy says deny (tool is on the deny list); the trace
-          records allow ('argument-conditioned rule matched'). This is the 'policy accepted
-          but not enforced' failure mode — a rule that is registered but never applied.
-          fix: Replay the call against the gateway with the same arguments and fix
-               the rule binding, then add this call as a regression case in CI.
+!! [CRITICAL] AT-POISON-001 tool 'refund_order' hides an instruction in its description
+          The description contains text that matches 'hides the call': 'do not tell the user'.
+          A tool definition is read by the model, so this is an instruction channel that the
+          user never sees.
+          fix: Remove the instruction from the description. The tool's description should state
+               what it does, not what the model must do.
 
-summary: critical=7, high=6
+!! [CRITICAL] AT-AUTHZ-001 'alice' was allowed to call 'refund_order'
+          The policy denies 'refund_order' for this identity (tool is on the deny list), but the
+          server executed the call. This is broken access control, not a policy tuning problem.
+          fix: Enforce the decision inside the server's tool dispatcher, before the handler runs.
+
+!! [CRITICAL] AT-AUTHZ-002 case AUTHZ-CROSS-01: 'alice' reached an object it must not reach
+          The case expects 'get_order' to be refused for 'alice' (order B-77 belongs to bob,
+          not to alice), but the server executed the call.
+          fix: Check ownership of the object at the point of use, not only the role of the caller.
+
+summary: critical=4, high=2, medium=4, low=3
+tested: 2 identities, 6 tools, 12 calls
 ```
 
-Exit code `1` means a blocking finding exists. `--json` prints machine-readable findings; `--strict` treats high findings as blocking as well.
+Exit code `1` means a blocking finding exists. `--json` prints machine-readable findings, `--sarif` writes SARIF 2.1.0 for code scanning, `--strict` treats medium findings as blocking.
 
 | Command | Purpose |
 |---|---|
-| `attest init` | Write a starter policy |
-| `attest check` | Check a trace against a policy |
+| `attest test` | Test a live server against a policy, as every identity in it |
+| `attest init` | Write a starter policy, optionally from the live tool list |
+| `attest verify` | Verify an evidence bundle offline |
+| `attest check` | Audit a recorded trace against a policy |
 | `attest receipts` | Build and verify a hash-chained receipt trail |
 | `attest shadow` | List the servers an agent can reach outside the gateway |
 | `attest rules` | List the enforced rules |
 
-## The nine checks
+## The rules
 
-| ID | Rule | The failure it catches |
-|---|---|---|
-| C1 | default-deny | An unset allowlist silently meaning "allow everything" |
-| C2 | list/call parity | A tool hidden from `tools/list` but callable by name |
-| C3 | narrowing only | A per-request control widening a client's grant |
-| C4 | credential separation | The client's token replayed upstream verbatim |
-| C5 | fail closed | A call allowed because the policy check errored |
-| C6 | enforcement parity | The policy says deny, the gateway allowed it |
-| C7 | shadow MCP | A server the agent can reach outside the gateway |
-| C8 | receipt chain | Allowed calls with no verifiable receipt, or a broken chain |
-| C9 | description integrity | A tool definition changed after approval (rug pull) |
+Live rules run against a server you point it at. Each maps to a test in the OWASP MCP Security Testing Guide.
 
-## Input files
+| ID | Rule | OWASP | The failure it catches |
+|---|---|---|---|
+| AT-AUTHZ-001 | policy enforced per identity | MCPSTG-AUTHZ-01 | The server allows what your policy denies |
+| AT-AUTHZ-002 | cross-user objects refused | MCPSTG-AUTHZ-03 | A valid identifier belonging to another principal |
+| AT-TOKEN-001 | tokens validated | MCPSTG-AUTHN-04 | A malformed, tampered or expired token gets through |
+| AT-POISON-001 | no hidden instructions | MCPSTG-TOOL-01 | Instructions smuggled into tool metadata |
+| AT-DRIFT-001 | no manifest drift | MCPSTG-SUPP-01 | A tool added or changed after approval (rug pull) |
+| AT-SECRET-001 | no secrets in output | MCPSTG-SECR-01 | A credential in the tool output |
+| AT-FAILCLOSED-001 | fail closed on invalid input | MCPSTG-CONF-01 | A call executed with missing required arguments |
+| AT-INJECT-001 | no injected instructions in output | MCPSTG-TOOL-01 | Instructions aimed at the model inside a tool result |
+| AT-SINK-001 | guarded execution sinks | MCPSTG-TOOL-02 | Model input reaching a shell, a file or a URL |
+| AT-SCHEMA-001 | strict tool schemas | MCPSTG-TOOL-04 | Untyped, unbounded or free-form arguments |
+| AT-APPROVAL-001 | declared risk and approval | MCPSTG-AUTHZ-02 | A state-changing tool that declares no risk |
+| AT-ERROR-001 | clean error messages | MCPSTG-CONF-03 | Stack traces and internal paths in errors |
 
-### Policy
+Trace rules run against a recorded session and are unchanged since 0.1: `C1` default-deny, `C2` list/call parity, `C3` narrowing only, `C4` credential separation, `C5` fail closed, `C6` enforcement parity, `C7` shadow MCP, `C8` receipt chain, `C9` description integrity.
+
+## The policy file
+
+One file holds both sides of the comparison: what each identity may call, and how that identity presents itself.
 
 ```json
 {
   "version": 1,
   "default_decision": "deny",
   "clients": {
-    "ci-bot": {
+    "alice": {
       "tools": {
-        "allow": ["fs__read_file", "fs__list_directory"],
-        "deny": ["fs__write_file", "fs__delete_everything"],
-        "conditional": [
-          {
-            "tool": "fs__write_file",
-            "allow_when": { "path": { "starts_with": "./out/" } },
-            "action": "allow",
-            "reason": "writes are allowed only inside ./out/"
-          }
-        ]
+        "allow": ["list_orders", "get_order"],
+        "deny": ["refund_order"]
       },
-      "egress_hosts": ["api.internal.example.com"]
+      "identity": {
+        "headers": { "Authorization": "Bearer ${ALICE_TOKEN}" }
+      }
     }
   },
-  "gateway": { "mode": "routed", "fail_closed": true, "passthrough_credentials": false },
-  "receipts": { "required": true, "key_env": "MCP_ATTEST_KEY" }
+  "cases": [
+    {
+      "id": "AUTHZ-CROSS-01",
+      "identity": "alice",
+      "tool": "get_order",
+      "args": { "order_id": "B-77" },
+      "expect": "deny",
+      "reason": "order B-77 belongs to bob, not to alice"
+    }
+  ],
+  "probes": {
+    "get_order": { "order_id": "A-1" }
+  }
 }
 ```
 
-Condition operators: `eq`, `not_eq`, `starts_with`, `ends_with`, `contains`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`, `glob`, `regex`. A bare string ending in `/` is a prefix; a bare string containing `*` is a glob.
+- **identity** — how to present yourself. `headers` for HTTP servers, `env` for stdio servers. `${VAR}` is expanded from the environment, so credentials never live in the file.
+- **cases** — explicit expectations that a generated probe cannot express: an identifier owned by someone else, an amount above a threshold, a tool that must be refused.
+- **probes** — the arguments to send for a tool. Pinning arguments is also how you opt in to calling a tool that changes state.
 
-### Trace
-
-Newline-delimited JSON, one event per line. Any proxy, agent harness or CI step can produce it.
-
-```jsonl
-{"type":"tools_list","actor":"ci-bot","tools":[{"name":"fs__read_file","description_sha256":"a1b2…"}]}
-{"type":"tool_call","actor":"ci-bot","tool":"fs__read_file","args":{"path":"/srv/README.md"},"decision":"allow","upstream":true,"reason":"tool is on the allow list"}
-{"type":"client_servers","client":"claude-code","servers":["fs","git"]}
-{"type":"gateway_route","server":"fs","tools":["read_file","list_directory"]}
-```
-
-Full specification: [SPEC.md](SPEC.md).
-
-## Receipts
+## Evidence
 
 ```sh
-export MCP_ATTEST_KEY=…
-attest receipts --trace examples/session.jsonl --out receipts.jsonl
-# chain: ok (6 receipts, key=yes)
+attest test --url https://mcp.example.com/mcp --policy policy.json --evidence bundle.json
+attest verify --bundle bundle.json
+# bundle: ok (14 records, key=yes)
 ```
 
-Each receipt commits to the previous one, so removing or reordering a receipt breaks the chain. With `MCP_ATTEST_KEY` set, every receipt is additionally signed with HMAC-SHA256, so an auditor can detect edits without access to the gateway.
+Each record carries the request, the response, the identity, the timestamp, the expected decision and the observed decision, with anything that looks like a credential redacted. The records are hash-chained and, with `MCP_ATTEST_KEY` set, signed with HMAC-SHA256.
 
-This is deliberately not a PKI. It answers the question an incident responder actually asks: *did this session really contain these calls, in this order, and has anything been altered since?*
+That is what turns "our agent policy is enforced" from a sentence in a security questionnaire into an artifact a third party can check.
 
 ## Use it in CI
 
@@ -173,18 +193,19 @@ This is deliberately not a PKI. It answers the question an incident responder ac
 - uses: Balanov/mcp-attest@v0
   with:
     policy: .attest/policy.json
-    trace: .attest/trace.jsonl
+    command: "python my_server.py"
+    sarif: mcp-attest.sarif
 ```
 
-The action fails the job on any critical or high finding, so "our agent policy is enforced" becomes something the pipeline proves instead of something a security questionnaire asks about.
+The action fails the job on any critical or high finding, and the SARIF output lands in code scanning next to the rest of the repository's security results.
 
 ## What mcp-attest is not
 
 - Not a gateway, proxy or enforcement point. It cannot block a call.
-- Not a scanner. It does not connect to your MCP server and sends no probe traffic.
-- Not a PKI. A receipt chain and an HMAC prove order and integrity, not identity.
-- Not a policy editor. It reads the policy you already have.
-- Not a hosted service. No account, no network calls, no telemetry.
+- Not a scanner. It does not judge a schema or a description; it exercises a server.
+- Not a model-based red team. Nothing here calls an LLM, so nothing here is non-deterministic or billable.
+- Not a PKI. A hash chain and an HMAC prove order and integrity, not identity.
+- Not a hosted service. No account, no telemetry, no network calls beyond the server under test.
 
 ## Development
 
@@ -193,7 +214,7 @@ python -m pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 ```
 
-CI runs the suite on Python 3.10–3.13 and publishes the package to PyPI from a tagged release through trusted publishing, with no API token in the repository.
+The suite starts real MCP servers — one over stdio, one over HTTP, one with broken token checks — and asserts on what the harness finds. CI runs it on Python 3.10–3.13 and publishes to PyPI from a tagged release through trusted publishing, with no API token in the repository.
 
 ## License
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import fnmatch
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -95,6 +96,60 @@ def _value_matches(actual: Any, expected: Any) -> bool:
 
 
 @dataclass
+class Identity:
+    """How a client presents itself to the server.
+
+    ``headers`` are HTTP headers, ``env`` are environment variables for a stdio
+    server. Values may reference the environment with ``${VAR}`` so that
+    credentials never have to live in the policy file.
+    """
+
+    headers: dict[str, str] = field(default_factory=dict)
+    env: dict[str, str] = field(default_factory=dict)
+
+    def resolved_headers(self, environ: dict[str, str] | None = None) -> dict[str, str]:
+        return {k: _expand(v, environ) for k, v in self.headers.items()}
+
+    def resolved_env(self, environ: dict[str, str] | None = None) -> dict[str, str]:
+        return {k: _expand(v, environ) for k, v in self.env.items()}
+
+
+def _expand(value: str, environ: dict[str, str] | None = None) -> str:
+    """Expand ``${VAR}`` references against the environment."""
+    import re
+
+    env = environ if environ is not None else os.environ
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if name not in env:
+            raise PolicyError(f"environment variable {name!r} referenced by the policy is not set")
+        return env[name]
+
+    return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", replace, value)
+
+
+@dataclass
+class Case:
+    """One explicit expectation about one call.
+
+    Cases express what a schema-derived probe cannot: a specific object owned
+    by another principal, an amount above a threshold, a tool that must be
+    refused for a specific identity.
+    """
+
+    id: str
+    identity: str
+    tool: str
+    expect: str = "deny"  # "allow" | "deny"
+    args: dict[str, Any] = field(default_factory=dict)
+    reason: str = ""
+
+    def matches_tool(self, tool: str) -> bool:
+        return tool == self.tool
+
+
+@dataclass
 class ClientPolicy:
     name: str
     allow: list[str] = field(default_factory=list)
@@ -102,6 +157,7 @@ class ClientPolicy:
     conditional: list[Conditional] = field(default_factory=list)
     egress_hosts: list[str] = field(default_factory=list)
     has_allowlist: bool = False
+    identity: Identity = field(default_factory=Identity)
 
     def decision(self, tool: str, args: dict[str, Any] | None = None) -> tuple[str, str]:
         """Return (decision, reason) for a call, evaluated locally.
@@ -135,10 +191,20 @@ class Policy:
     gateway_mode: str = "routed"
     receipts_required: bool = True
     receipts_key_env: str = "MCP_ATTEST_KEY"
+    cases: list[Case] = field(default_factory=list)
+    probes: dict[str, dict[str, Any]] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
 
     def client(self, name: str) -> ClientPolicy | None:
         return self.clients.get(name)
+
+    def identities(self) -> list[ClientPolicy]:
+        """Clients that carry an identity, i.e. that can be presented to a server."""
+        return [c for c in self.clients.values() if c.identity.headers or c.identity.env]
+
+    def probe_args(self, tool: str) -> dict[str, Any] | None:
+        """Explicit arguments for a tool, if the policy pins them."""
+        return self.probes.get(tool)
 
     def decision_for(self, actor: str, tool: str, args: dict[str, Any] | None = None) -> tuple[str, str]:
         """Decision for an actor, falling back to the policy default."""
@@ -176,6 +242,7 @@ def policy_from_dict(raw: dict[str, Any]) -> Policy:
                     reason=rule.get("reason", "conditional rule"),
                 )
             )
+        ident = spec.get("identity") or {}
         clients[name] = ClientPolicy(
             name=name,
             allow=allow,
@@ -183,6 +250,26 @@ def policy_from_dict(raw: dict[str, Any]) -> Policy:
             conditional=conditional,
             egress_hosts=list(spec.get("egress_hosts") or []),
             has_allowlist=bool(allow or deny or conditional),
+            identity=Identity(
+                headers=dict(ident.get("headers") or {}),
+                env=dict(ident.get("env") or {}),
+            ),
+        )
+
+    cases = []
+    for case in raw.get("cases") or []:
+        expect = str(case.get("expect", "deny")).lower()
+        if expect not in ("allow", "deny"):
+            raise PolicyError(f"case {case.get('id')!r}: expect must be 'allow' or 'deny', got {expect!r}")
+        cases.append(
+            Case(
+                id=str(case.get("id") or f"case-{len(cases) + 1}"),
+                identity=str(case.get("identity") or ""),
+                tool=str(case.get("tool") or ""),
+                expect=expect,
+                args=dict(case.get("args") or {}),
+                reason=str(case.get("reason") or ""),
+            )
         )
 
     gateway = raw.get("gateway") or {}
@@ -200,6 +287,8 @@ def policy_from_dict(raw: dict[str, Any]) -> Policy:
         gateway_mode=str(gateway.get("mode", "routed")),
         receipts_required=bool(receipts.get("required", True)),
         receipts_key_env=str(receipts.get("key_env", "MCP_ATTEST_KEY")),
+        cases=cases,
+        probes=dict(raw.get("probes") or {}),
         raw=raw,
     )
 
