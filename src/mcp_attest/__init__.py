@@ -1,6 +1,6 @@
 """mcp-attest — conformance and attestation harness for MCP agent access control."""
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 from .checks import RULES, Finding, run_checks, summarize
 from .conformance import ConformanceResult, RunOptions, run_conformance

@@ -1,0 +1,7 @@
+include LICENSE
+include README.md
+include README_RU.md
+include CHANGELOG.md
+include SPEC.md
+recursive-include tests *.py *.json *.jsonl
+recursive-include examples *.py *.json *.jsonl
