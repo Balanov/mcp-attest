@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-attest"
-version = "0.1.1"
+version = "0.1.2"
 description = "Conformance and attestation harness for MCP agent access control: prove that a policy actually enforces, detect shadow MCP paths, and emit tamper-evident receipts."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,9 +23,11 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/Balanov/mcp-attest"
+Homepage = "https://balanov.pro/mcp-attest/"
+Documentation = "https://balanov.pro/mcp-attest/"
 Source = "https://github.com/Balanov/mcp-attest"
 Issues = "https://github.com/Balanov/mcp-attest/issues"
+Changelog = "https://github.com/Balanov/mcp-attest/blob/main/CHANGELOG.md"
 
 [project.scripts]
 attest = "mcp_attest.cli:main"
