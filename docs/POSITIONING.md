@@ -146,7 +146,7 @@ thin.
 ## 4. The claim we can actually make
 
 **We are not the best, and we should not say we are.** This project is at
-v1.0.0, has a handful of stars, no users, no independent evaluation and no
+v1.1.0, has a handful of stars, no users, no independent evaluation and no
 benchmark. mcp-assert is older, better documented and has production
 adoption we cannot match. promptfoo has a company's distribution behind it.
 
@@ -173,6 +173,11 @@ What is true, and narrow:
    them.
 6. **Nothing in the request path.** It cannot block a call. If the answer
    needed is "stop the call", use a gateway.
+7. **The same policy, two inputs.** `attest test` sends the calls to a live
+   server; `attest check --otlp` judges an OpenTelemetry export you already
+   produce, against the same policy file. A team that already instruments its
+   agent with OTel does not need a second instrumentation path to get an
+   answer.
 
 What is **not** true, and should not be written anywhere:
 
