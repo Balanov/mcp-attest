@@ -4,17 +4,24 @@
 
 ### Added
 
-- `attest check --otlp <file>` reads an OpenTelemetry export directly. MCP spans
-  (`mcp.tool.call`, `mcp.tools.list`, `mcp.client.servers`, `mcp.gateway.route`)
-  are mapped to trace events; spans that describe anything else are skipped and
-  reported. A team that already runs OTel no longer needs a second
-  instrumentation path to prove what its agent was allowed to do.
+- Nothing yet: the next release starts from the 0.1.1 line.
 
 
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.1] - 2026-11-13
+
+### Added
+
+- CI and PyPI badges in the README.
+
+### Fixed
+
+- CLI output is forced to UTF-8, so findings containing em dashes no longer break
+  on a Windows console with a legacy code page.
 
 ## [0.1.0] - 2026-11-13
 
