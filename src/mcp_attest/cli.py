@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -14,10 +15,13 @@ from .conformance import ConformanceResult, RunOptions, manifest_hash, run_confo
 from .evidence import bundle_to_dict, build_bundle, key_from_env, verify_bundle
 from .otlp import load_otlp
 from .policy import STARTER_POLICY, PolicyError, load_policy
+from .posture import REGISTRY_URL, registry_population, render_report, sample_population, scan
+from .posture import summarize as summarize_posture
 from .receipts import build_receipts, verify_receipts
 from .report import print_findings, print_result, result_payload, write_sarif
 from .rules import RULES, blocking_severities, rule_catalog
 from .shadow import find_shadow_paths
+from .suite import SuiteError, export_suite, load_suite, suite_to_policy, validate_suite
 from .targets import parse_target
 from .trace import load_trace, write_trace
 
@@ -308,6 +312,146 @@ def cmd_rules(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_posture(args: argparse.Namespace) -> int:
+    """Measure the posture of public MCP servers, without calling any tool."""
+    try:
+        population = registry_population()
+    except Exception as exc:  # noqa: BLE001 - a failed fetch is a usage error
+        print(f"registry error: {exc}", file=sys.stderr)
+        return 2
+    servers = sample_population(population, stride=args.stride, limit=args.limit)
+    if not servers:
+        print("the registry listed no remote server to measure", file=sys.stderr)
+        return 2
+
+    print(
+        "the registry lists %d server(s) with an HTTP remote; measuring every %s one (%d)"
+        % (len(population), args.stride, len(servers))
+    )
+
+    def progress(index: int, total: int, record) -> None:
+        state = "open" if record.requires_auth is False else ("closed" if record.requires_auth else "no answer")
+        print(f"  [{index}/{total}] {record.name}: {state}", file=sys.stderr)
+
+    records = scan(servers, delay=args.delay, timeout=args.timeout, progress=progress)
+    summary = summarize_posture(records)
+    summary["registry_population"] = len(population)
+    summary["stride"] = args.stride
+    summary["delay"] = args.delay
+
+    when = time.strftime("%Y-%m-%d")
+    report = render_report(
+        summary,
+        source="the official MCP registry (%s)" % REGISTRY_URL,
+        when=when,
+        include_hosts=args.include_hosts,
+        records=records,
+    )
+    if args.out:
+        Path(args.out).write_text(report, encoding="utf-8")
+        print(f"wrote the report to {args.out}")
+    else:
+        print(report)
+
+    if args.json:
+        payload = {"summary": summary, "servers": [r.to_dict() for r in records]}
+        Path(args.json).write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"wrote the per-server dataset to {args.json}")
+
+    print(
+        "measured %d server(s): %d answered, %d accepted a session with no credentials"
+        % (summary["measured"], summary["answered"], summary["open_without_credentials"])
+    )
+    return 0
+
+
+def cmd_suite(args: argparse.Namespace) -> int:
+    """The portable suite format: export, validate, run."""
+    action = args.suite_command
+
+    if action == "export":
+        try:
+            policy = _load_policy(args.policy)
+        except PolicyError as exc:
+            print(f"policy error: {exc}", file=sys.stderr)
+            return 2
+        target: dict[str, Any] = {}
+        if args.url:
+            target["url"] = args.url
+        if args.command:
+            target["command"] = args.command
+        document = export_suite(
+            policy,
+            name=args.name or Path(args.policy).stem,
+            description=args.description or "",
+            target=target,
+            rules=list(args.rule or []),
+        )
+        Path(args.out).write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"wrote the suite {document['name']!r} with {len(document['identities'])} identity/identities to {args.out}")
+        return 0
+
+    if action == "validate":
+        try:
+            document = json.loads(Path(args.suite).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"suite error: {exc}", file=sys.stderr)
+            return 2
+        problems = validate_suite(document)
+        if problems:
+            print(f"the suite is not valid: {len(problems)} problem(s)", file=sys.stderr)
+            for problem in problems:
+                print(f"  {problem}", file=sys.stderr)
+            return 1
+        print(f"the suite {document['name']!r} is valid: {len(document['identities'])} identity/identities")
+        return 0
+
+    # run
+    try:
+        suite = load_suite(args.suite)
+    except SuiteError as exc:
+        print(f"suite error: {exc}", file=sys.stderr)
+        return 2
+    policy = suite_to_policy(suite)
+
+    command = args.command or suite.target.get("command")
+    url = args.url or suite.target.get("url")
+    if not command and not url:
+        print("the suite names no target: give --url or --command", file=sys.stderr)
+        return 2
+    try:
+        target = parse_target(command, url, args.env, args.header, timeout=args.timeout)
+    except ValueError as exc:
+        print(f"target error: {exc}", file=sys.stderr)
+        return 2
+
+    options = RunOptions(
+        allow_unsafe=args.allow_unsafe,
+        dry_run=args.dry_run,
+        only=list(args.only or []) or list(suite.rules or []),
+        timeout=args.timeout,
+    )
+    try:
+        result = run_conformance(target, policy, options)
+    except Exception as exc:  # noqa: BLE001 - a broken run is a usage error, not a crash
+        print(f"run failed: {exc}", file=sys.stderr)
+        return 2
+    if result.error:
+        print(f"run failed: {result.error}", file=sys.stderr)
+        return 2
+
+    if args.json:
+        print(json.dumps(result_payload(result), indent=2, ensure_ascii=False))
+    else:
+        print_result(result, False)
+    if args.sarif:
+        write_sarif(result, args.sarif)
+        print(f"wrote SARIF to {args.sarif}")
+    blocking = blocking_severities(args.strict)
+    hit = [f for f in result.findings if f.severity in blocking]
+    return 1 if hit else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="attest",
@@ -370,6 +514,60 @@ def build_parser() -> argparse.ArgumentParser:
     p_rules = sub.add_parser("rules", help="list the enforced rules")
     p_rules.add_argument("--json", action="store_true")
     p_rules.set_defaults(func=cmd_rules)
+
+    p_suite = sub.add_parser("suite", help="export, validate and run a portable conformance suite")
+    suite_sub = p_suite.add_subparsers(dest="suite_command", required=True)
+
+    p_export = suite_sub.add_parser("export", help="write a portable suite from a policy")
+    p_export.add_argument("--policy", required=True)
+    p_export.add_argument("--out", required=True)
+    p_export.add_argument("--name", help="name of the suite")
+    p_export.add_argument("--description", help="one line about what the suite checks")
+    p_export.add_argument("--url", help="the server the suite is written for")
+    p_export.add_argument("--command", help="the server the suite starts")
+    p_export.add_argument("--rule", action="append", default=[], metavar="RULE", help="rule this suite covers (repeatable)")
+    p_export.set_defaults(func=cmd_suite)
+
+    p_validate = suite_sub.add_parser("validate", help="check a suite against the published schema")
+    p_validate.add_argument("--suite", required=True)
+    p_validate.set_defaults(func=cmd_suite)
+
+    p_suite_run = suite_sub.add_parser("run", help="run a suite against a server")
+    p_suite_run.add_argument("--suite", required=True)
+    p_suite_run.add_argument("--url", help="override the server the suite names")
+    p_suite_run.add_argument("--command", help="override the command the suite names")
+    p_suite_run.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
+    p_suite_run.add_argument("--header", action="append", default=[], metavar="NAME: VALUE")
+    p_suite_run.add_argument("--allow-unsafe", action="store_true")
+    p_suite_run.add_argument("--dry-run", action="store_true")
+    p_suite_run.add_argument("--only", action="append", default=[], metavar="RULE")
+    p_suite_run.add_argument("--timeout", type=float, default=10.0)
+    p_suite_run.add_argument("--json", action="store_true")
+    p_suite_run.add_argument("--sarif", metavar="PATH")
+    p_suite_run.add_argument("--strict", action="store_true")
+    p_suite_run.set_defaults(func=cmd_suite)
+
+    p_posture = sub.add_parser(
+        "posture",
+        help="measure public MCP servers without calling any tool on them",
+    )
+    p_posture.add_argument("--limit", type=int, default=0, help="measure at most this many servers (0 = all)")
+    p_posture.add_argument(
+        "--stride",
+        type=int,
+        default=1,
+        help="measure every N-th server of the registry, so the sample covers the whole name space",
+    )
+    p_posture.add_argument("--delay", type=float, default=1.0, help="seconds between servers")
+    p_posture.add_argument("--timeout", type=float, default=15.0, help="per-request timeout in seconds")
+    p_posture.add_argument("--out", help="write the report to this file")
+    p_posture.add_argument("--json", help="write the per-server dataset to this file")
+    p_posture.add_argument(
+        "--include-hosts",
+        action="store_true",
+        help="put the host names in the report (a disclosure: your call, not the tool's)",
+    )
+    p_posture.set_defaults(func=cmd_posture)
 
     return parser
 

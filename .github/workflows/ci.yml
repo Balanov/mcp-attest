@@ -29,6 +29,55 @@ jobs:
       - name: Self-check on the example server
         run: |
           attest test --command "python examples/servers/orders_server.py --variant secure" --policy examples/live-policy.json
+      - name: Self-check on the OAuth server
+        run: |
+          python examples/servers/orders_http_server.py --port 8947 --oauth &
+          server_pid=$!
+          trap 'kill $server_pid' EXIT
+          sleep 1
+          python - <<'PY'
+          import json, os, subprocess, sys, time
+          sys.path.insert(0, "src")
+          from mcp_attest.oauth import mint_jwt
+
+          port = 8947
+          now = int(time.time())
+
+          def token(subject, scope):
+              return mint_jwt(
+                  {"sub": subject, "iss": "https://auth.example.com/", "aud": "mcp://orders",
+                   "scope": scope, "iat": now, "exp": now + 3600},
+                  "test-signing-key",
+              )
+
+          os.environ["ALICE_TOKEN"] = token("alice", "orders:read")
+          os.environ["LEAD_TOKEN"] = token("lead", "orders:read orders:write")
+          os.environ["MCP_ATTEST_OAUTH_KEY"] = "test-signing-key"
+
+          with open("examples/live-policy-oauth.json", encoding="utf-8") as handle:
+              policy = json.load(handle)
+          oauth = policy["oauth"]
+          oauth["authorization_endpoint"] = "http://127.0.0.1:%d/authorize" % port
+          oauth["redirect_uri"] = "http://127.0.0.1:%d/callback" % port
+          oauth["resource"] = "http://127.0.0.1:%d/mcp" % port
+          oauth["protected_resource_metadata"] = (
+              "http://127.0.0.1:%d/.well-known/oauth-protected-resource" % port
+          )
+          oauth.pop("upstream", None)
+          with open("/tmp/oauth-policy.json", "w", encoding="utf-8") as handle:
+              json.dump(policy, handle)
+
+          subprocess.run(
+              [sys.executable, "-m", "mcp_attest", "test",
+               "--url", "http://127.0.0.1:%d/mcp" % port,
+               "--policy", "/tmp/oauth-policy.json"],
+              check=True,
+          )
+          PY
+      - name: Self-check on the suite format
+        run: |
+          attest suite export --policy examples/live-policy.json --out /tmp/suite.json --name self-check
+          attest suite validate --suite /tmp/suite.json
 
   publish:
     needs: test

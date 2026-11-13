@@ -1,11 +1,13 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — the authorization conformance harness for MCP servers. One command, every identity, real calls, evidence you can hand to an auditor." width="100%">
   <p><strong>Prove that your MCP server denies what it must deny.</strong></p>
-  <p>One command · every identity · real calls · twelve rules · zero dependencies · MIT</p>
+  <p>One command · every identity · real calls · twenty-four rules · zero dependencies · MIT</p>
   <p>
     <a href="#install">Install</a> ·
     <a href="#run-it">Run it</a> ·
     <a href="#the-rules">The rules</a> ·
+    <a href="#the-oauth-checks">OAuth</a> ·
+    <a href="#a-suite-other-harnesses-can-run">Suites</a> ·
     <a href="#the-policy-file">Policy</a> ·
     <a href="#evidence">Evidence</a> ·
     <a href="#use-it-in-ci">CI</a> ·
@@ -34,6 +36,7 @@ It is not a gateway. It cannot block anything. It proves what your server does.
 ## Why mcp-attest?
 
 - **It tests the decision, not the definition.** A scanner tells you what a tool description looks like. `mcp-attest` tells you whether `alice` may call `refund_order` — by calling it, as `alice`, and looking at what came back.
+- **It covers the OAuth half of the standard too.** Wrong audience, wrong issuer, wrong scope, tampered signature, expired token, `alg: none`, a redirect URI that is not registered, a missing PKCE challenge, a dropped state, a token that must not reach the upstream. Twelve checks that the OWASP guide lists and no tool in the ecosystem performs.
 - **The matrix is generated, not typed.** Write who may call what. The harness derives every identity × tool pair, derives the arguments from the schema, and compares. Adding a tool to your server does not mean rewriting the test suite.
 - **Deterministic.** No model, no API key, no network beyond the server under test. The same policy and the same server give the same report every time, which is what makes it usable as a gate.
 - **Evidence, not opinion.** Every call is recorded with the request, the response, the identity, the timestamp and the policy decision. The records are hash-chained and optionally HMAC-signed, so an auditor can verify the bundle offline without trusting the machine that produced it.
@@ -109,10 +112,12 @@ Exit code `1` means a blocking finding exists. `--json` prints machine-readable 
 |---|---|
 | `attest test` | Test a live server against a policy, as every identity in it |
 | `attest init` | Write a starter policy, optionally from the live tool list |
+| `attest suite` | Export, validate and run a portable conformance suite |
 | `attest verify` | Verify an evidence bundle offline |
 | `attest check` | Audit a recorded trace against a policy |
 | `attest receipts` | Build and verify a hash-chained receipt trail |
 | `attest shadow` | List the servers an agent can reach outside the gateway |
+| `attest posture` | Measure public MCP servers without calling a tool on them |
 | `attest rules` | List the enforced rules |
 
 ### Check an export you already have
@@ -153,6 +158,64 @@ Live rules run against a server you point it at. Each maps to a test in the OWAS
 
 Trace rules run against a recorded session and are unchanged since 0.1: `C1` default-deny, `C2` list/call parity, `C3` narrowing only, `C4` credential separation, `C5` fail closed, `C6` enforcement parity, `C7` shadow MCP, `C8` receipt chain, `C9` description integrity.
 
+### The OAuth checks
+
+The second half of the OWASP minimum set. They run when the policy carries an `oauth` block, and they need a server that speaks Streamable HTTP.
+
+| ID | Rule | OWASP | The failure it catches |
+|---|---|---|---|
+| AT-OAUTH-001 | a token is required | MCPSTG-AUTHN-01 | A request with no bearer token is accepted |
+| AT-OAUTH-002 | the signature is verified | MCPSTG-AUTHN-02 | A tampered signature is accepted |
+| AT-OAUTH-003 | unsigned tokens are refused | MCPSTG-AUTHN-03 | An `alg: none` token is accepted |
+| AT-OAUTH-004 | expiry is enforced | MCPSTG-AUTHN-05 | An expired token is accepted |
+| AT-OAUTH-005 | audience is enforced | MCPSTG-AUTHN-06 | A token minted for another audience is accepted |
+| AT-OAUTH-006 | issuer is enforced | MCPSTG-AUTHN-07 | A token from another issuer is accepted |
+| AT-OAUTH-007 | scope is enforced | MCPSTG-AUTHZ-04 | A tool runs without the scope it requires |
+| AT-OAUTH-008 | protected resource metadata | MCPSTG-AUTHN-08 | The refusal does not point at the metadata (RFC 9728) |
+| AT-OAUTH-009 | PKCE is required | MCPSTG-AUTHN-09 | A code is issued without an S256 challenge |
+| AT-OAUTH-010 | redirect_uri is validated | MCPSTG-AUTHN-10 | A code is issued for an unregistered redirect URI |
+| AT-OAUTH-011 | state is echoed | MCPSTG-AUTHN-11 | The authorization response drops the state |
+| AT-OAUTH-012 | no token passthrough | MCPSTG-AUTHN-12 | A token for this server is accepted by the upstream |
+
+Three of them need the signing key, because a token that is expired or minted for the wrong audience must be **correctly signed** — otherwise the server can refuse it for the wrong reason and the test proves nothing:
+
+```json
+"oauth": {
+  "issuer": "https://auth.example.com/",
+  "audience": "mcp://orders",
+  "signing_key_env": "MCP_ATTEST_OAUTH_KEY",
+  "authorization_endpoint": "http://127.0.0.1:8931/authorize",
+  "redirect_uri": "http://127.0.0.1:8931/callback",
+  "resource": "http://127.0.0.1:8931/mcp",
+  "upstream": "http://127.0.0.1:8932/mcp",
+  "required_scopes": { "refund_order": "orders:write" }
+}
+```
+
+Without the key those three are reported as **skipped**, never as passed. A test that did not run is not a test that passed.
+
+## A suite other harnesses can run
+
+A policy file is written for one tool. A suite is the portable projection of it: who may call what, as whom, and what must come back. Any harness that can open an MCP session and compare a decision with an expectation can run it — and the schema is published, so "any harness" means something concrete.
+
+```sh
+attest suite export --policy policy.json --out suite.json --name orders-authorization
+attest suite validate --suite suite.json
+attest suite run --suite suite.json --url https://mcp.example.com/mcp
+```
+
+The schema lives at [`docs/mcp-attest-suite.schema.json`](docs/mcp-attest-suite.schema.json). Credentials stay as `${VAR}` references, exactly as in the policy.
+
+## How the public servers look
+
+`attest posture` measures the servers the official MCP registry lists, without calling a tool on any of them: at most three well-formed requests per server, one connection, a pause in between. No fuzzing, no malformed payloads, no tool calls — so nothing can be changed on a server that is not yours.
+
+```sh
+attest posture --stride 9 --out posture.md --json posture.json
+```
+
+The published report carries aggregates and the method, and no host names: a server that accepts an unauthenticated session is a disclosure, and disclosure is the operator's decision. The scan ships so that anyone can reproduce it.
+
 ## The policy file
 
 One file holds both sides of the comparison: what each identity may call, and how that identity presents itself.
@@ -191,6 +254,7 @@ One file holds both sides of the comparison: what each identity may call, and ho
 - **identity** — how to present yourself. `headers` for HTTP servers, `env` for stdio servers. `${VAR}` is expanded from the environment, so credentials never live in the file.
 - **cases** — explicit expectations that a generated probe cannot express: an identifier owned by someone else, an amount above a threshold, a tool that must be refused.
 - **probes** — the arguments to send for a tool. Pinning arguments is also how you opt in to calling a tool that changes state.
+- **oauth** — what the server's OAuth layer must look like. Omit it when the server does not use OAuth; the OAuth checks then do not run.
 
 ## Evidence
 
@@ -231,7 +295,7 @@ python -m pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 ```
 
-The suite starts real MCP servers — one over stdio, one over HTTP, one with broken token checks — and asserts on what the harness finds. CI runs it on Python 3.10–3.13 and publishes to PyPI from a tagged release through trusted publishing, with no API token in the repository.
+The suite starts real MCP servers — one over stdio, one over HTTP, one with broken token checks, one with a full OAuth layer where every check can be switched off on its own — and asserts on what the harness finds. CI runs it on Python 3.10–3.13 and publishes to PyPI from a tagged release through trusted publishing, with no API token in the repository.
 
 ## License
 
