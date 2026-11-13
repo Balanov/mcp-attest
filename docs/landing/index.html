@@ -185,6 +185,9 @@
     .why a.card2:hover { border-color: var(--faint); text-decoration: none; }
     .why .src { font: 500 11.5px var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; }
     .why .quote { margin: 9px 0 0; font-size: 14.5px; color: var(--muted); }
+    .honest { margin-top: 20px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+    .honest p { margin: 0; font-size: 14.5px; color: var(--muted); }
+    .honest a { color: var(--accent); }
 
     .spec-row { display: flex; flex-wrap: wrap; gap: 12px 30px; font: 400 13.5px var(--mono); color: var(--muted); padding: 4px 0 0; }
     .spec-row b { color: var(--ink); font-weight: 500; }
@@ -230,7 +233,7 @@
       <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
         <span>MCP-ATTEST</span>
-        <span class="ver">0.1.3</span>
+        <span class="ver">0.1.5</span>
       </a>
       <div class="top-right">
         <nav class="nav">
@@ -350,13 +353,16 @@
             <p class="quote" data-i18n="why1">"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check."</p>
           </a>
           <a class="card2" href="https://pipelab.org/blog/state-of-mcp-security-2026/" target="_blank" rel="noopener">
-            <div class="src">State of MCP Security 2026</div>
+            <div class="src">Pipelock · State of MCP Security 2026</div>
             <p class="quote" data-i18n="why2">"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible."</p>
           </a>
-          <a class="card2" href="https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF" target="_blank" rel="noopener">
-            <div class="src">CISA · MCP security design considerations</div>
+          <a class="card2" href="https://www.nsa.gov/Portals/75/documents/Cybersecurity/CSI_MCP_SECURITY.pdf" target="_blank" rel="noopener">
+            <div class="src">NSA / CISA · MCP Security Design Considerations</div>
             <p class="quote" data-i18n="why3">"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments."</p>
           </a>
+        </div>
+        <div class="honest">
+          <p data-i18n="honest">Recorded MCP sessions are already judged by other tools — agent-strace, mcpsnoop, mcp-conformance, mcp-traceguard, assay, snulbug. This one is narrower: one offline question, zero dependencies, no proxy, no SDK. <a href="https://github.com/Balanov/mcp-attest/blob/main/docs/POSITIONING.md" data-i18n="honestLink">Full comparison →</a></p>
         </div>
       </section>
 
@@ -450,6 +456,8 @@
           why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
           why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
           why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
+          honest: "Recorded MCP sessions are already judged by other tools — agent-strace, mcpsnoop, mcp-conformance, mcp-traceguard, assay, snulbug. This one is narrower: one offline question, zero dependencies, no proxy, no SDK. ",
+          honestLink: "Full comparison →",
           sp1: "checks", sp2: "dependencies", sp3: "trace format",
           citeTitle: "Cite this work — BibTeX", footReleases: "Releases"
         },
@@ -488,6 +496,8 @@
           why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
           why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
           why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
+          honest: "Записанные MCP-сессии уже разбирают другие инструменты — agent-strace, mcpsnoop, mcp-conformance, mcp-traceguard, assay, snulbug. Наш — уже: один офлайн-вопрос, ноль зависимостей, без прокси и SDK. ",
+          honestLink: "Полное сравнение →",
           sp1: "проверок", sp2: "зависимостей", sp3: "формат трейса",
           citeTitle: "Цитирование — BibTeX", footReleases: "Релизы"
         }
