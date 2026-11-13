@@ -1,20 +1,44 @@
 name: "mcp-attest"
-description: "Fail the build when an MCP agent policy is not actually enforced."
+description: "Fail the build when an MCP server does not enforce the access control you wrote."
 author: "Balanov.PRO"
 
 inputs:
+  mode:
+    description: "test = live conformance against a server; check = audit a recorded trace"
+    required: false
+    default: "test"
   policy:
     description: "Path to the policy JSON file"
     required: true
     default: ".attest/policy.json"
+  command:
+    description: "Command that starts the MCP server over stdio (mode: test)"
+    required: false
+    default: ""
+  url:
+    description: "URL of an MCP server speaking Streamable HTTP (mode: test)"
+    required: false
+    default: ""
   trace:
-    description: "Path to the newline-delimited JSON trace"
-    required: true
+    description: "Path to the newline-delimited JSON trace (mode: check)"
+    required: false
     default: ".attest/trace.jsonl"
+  baseline:
+    description: "Approved tool manifest to compare against (mode: test)"
+    required: false
+    default: ""
   strict:
     description: "Treat medium findings as failures too"
     required: false
     default: "false"
+  sarif:
+    description: "Write SARIF 2.1.0 to this path so code scanning picks the findings up"
+    required: false
+    default: ""
+  evidence:
+    description: "Write the signed evidence bundle to this path"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -25,9 +49,30 @@ runs:
         python -m pip install --upgrade pip
         pip install mcp-attest
 
+    - name: Test the server against the policy
+      if: inputs.mode == 'test'
+      shell: bash
+      run: |
+        args=(test --policy "${{ inputs.policy }}")
+        if [ -n "${{ inputs.command }}" ]; then args+=(--command "${{ inputs.command }}"); fi
+        if [ -n "${{ inputs.url }}" ]; then args+=(--url "${{ inputs.url }}"); fi
+        if [ -n "${{ inputs.baseline }}" ]; then args+=(--baseline "${{ inputs.baseline }}"); fi
+        if [ -n "${{ inputs.sarif }}" ]; then args+=(--sarif "${{ inputs.sarif }}"); fi
+        if [ -n "${{ inputs.evidence }}" ]; then args+=(--evidence "${{ inputs.evidence }}"); fi
+        if [ "${{ inputs.strict }}" = "true" ]; then args+=(--strict); fi
+        attest "${args[@]}"
+
     - name: Check the trace against the policy
+      if: inputs.mode == 'check'
       shell: bash
       run: |
         args=(check --policy "${{ inputs.policy }}" --trace "${{ inputs.trace }}" --json)
         if [ "${{ inputs.strict }}" = "true" ]; then args+=(--strict); fi
         attest "${args[@]}"
+
+    - name: Upload SARIF findings
+      if: inputs.mode == 'test' && inputs.sarif != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif }}
+        category: mcp-attest

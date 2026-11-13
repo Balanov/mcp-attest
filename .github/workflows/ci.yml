@@ -26,6 +26,9 @@ jobs:
       - name: Self-check on the example trace
         run: |
           attest check --policy examples/policy.json --trace examples/session.jsonl || true
+      - name: Self-check on the example server
+        run: |
+          attest test --command "python examples/servers/orders_server.py --variant secure" --policy examples/live-policy.json
 
   publish:
     needs: test

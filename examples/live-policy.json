@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "default_decision": "deny",
+  "clients": {
+    "alice": {
+      "tools": {
+        "allow": ["list_orders", "get_order", "export_ledger"],
+        "deny": ["refund_order"]
+      },
+      "identity": {
+        "env": { "MCP_ACTOR": "alice" }
+      }
+    },
+    "lead": {
+      "tools": {
+        "allow": ["list_orders", "get_order", "refund_order", "export_ledger"],
+        "deny": []
+      },
+      "identity": {
+        "env": { "MCP_ACTOR": "lead" }
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "AUTHZ-CROSS-01",
+      "identity": "alice",
+      "tool": "get_order",
+      "args": { "order_id": "B-77" },
+      "expect": "deny",
+      "reason": "order B-77 belongs to bob, not to alice"
+    }
+  ],
+  "probes": {
+    "get_order": { "order_id": "A-1" },
+    "refund_order": { "order_id": "A-1", "amount": 10 }
+  },
+  "gateway": {
+    "mode": "routed",
+    "fail_closed": true,
+    "passthrough_credentials": false
+  },
+  "receipts": {
+    "required": true,
+    "key_env": "MCP_ATTEST_KEY"
+  }
+}

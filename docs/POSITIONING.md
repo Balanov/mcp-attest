@@ -1,141 +1,193 @@
 # Positioning — what this solves, the evidence, and how this compares
 
 This file exists because the honest version is more useful than the strong
-version. Every quote below was checked against its source on 2026-11-14; every
-number carries its denominator.
+version. Every quote below was checked against its source on 2026-11-14;
+every number carries its denominator and a date.
 
 ## 1. What it solves
 
-One failure, precisely: **a rule that was accepted and never applied.**
+One failure, precisely: **the server allows what your access control says it
+must not allow.**
 
-You wrote a policy. The gateway accepted it. But for some calls the gateway
-decided differently — an argument-conditioned rule that never matched, a
-per-request control that widened a client's grant, a tool that stayed callable
-after it was dropped from the listing. None of that shows up in a dashboard,
-because a dashboard reports what the gateway believed, not what your policy
-says.
+You wrote a policy. An identity was granted a tool. But when the tool was
+actually called, the server did not check the role, did not check the owner
+of the object, did not check the token — and the call went through.
 
-`mcp-attest` takes the two files you already have — the policy and the trace —
-re-evaluates every recorded call against the policy locally, and reports each
-disagreement with the exact tool, arguments and decision.
+No dashboard shows that. A dashboard reports what the server believed.
+`mcp-attest` sends the call, as that identity, and looks at what came back.
 
-Secondary classes it catches from the same two files: a tool hidden from
-`tools/list` but callable by name (C2), a server the agent reaches outside the
-gateway (C7), a call allowed because the policy check itself errored (C5), a
-tool definition that changed after approval (C9), a client token replayed
-upstream (C4), and a broken receipt chain (C8).
+The second failure it covers is the token: a malformed, tampered or expired
+bearer that still completes the handshake.
 
-**What it deliberately does not do:** prevent anything, enforce at runtime,
-scan an MCP server, or stand in the request path. It is evidence, not a
-control. If the answer you need is "stop the call", use a gateway. If the
-answer is "prove what actually happened", use this.
+## 2. Why this gap, and why now
 
-## 2. The evidence, with links
+**The gap is named by the standard, not by us.**
 
-**The failure mode is documented, not invented.**
+The [OWASP MCP Security Testing Guide](https://github.com/OWASP/MCP-Security-Testing-Guide)
+holds 79 security tests for hosts, clients, servers, tools, resources,
+transports, gateways and agentic workflows. Its "Security Verification"
+chapter says:
 
-- *agentgateway, own evaluation, October 2026* —
-  [kuberneteslab.dev](https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/):
-  an argument-conditioned policy "was reported as accepted and still did not
-  enforce what it said, which is why I concluded that turning a policy on is not
-  the end of the job: send real calls and check." The same evaluation found
-  policies that were accepted and had no effect at all.
-- *Pipelock, State of MCP Security 2026* —
-  [pipelab.org](https://pipelab.org/blog/state-of-mcp-security-2026/):
-  "Gateways only protect the servers they route. An agent calling an MCP server
-  outside the gateway is invisible." and "Most gateways also do not do deep
-  content inspection of responses. The gateway enforces who and where, not
-  what." *(Vendor survey; the numbers below come from independent scans.)*
-- *NSA / CISA — MCP: Security Design Considerations* —
-  [nsa.gov mirror](https://www.nsa.gov/Portals/75/documents/Cybersecurity/CSI_MCP_SECURITY.pdf)
-  · [media.defense.gov original](https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF):
-  "Without these traceable audit logs, incident response and accountability
-  become significantly more difficult, especially in multi-tenant
-  environments." The same document asks for logs that capture "a traceable
-  sequence of actions across sessions" with "cryptographic hashes of results or
-  output".
+> "Security controls should be executable tests, not only checklist items."
 
-**The surface is exposed at scale.**
+and lists the minimum automated test set, beginning with:
+
+> "**Authorization matrix:** every tool, role, scope, tenant, object, and
+> read/write boundary, including valid IDs owned by another user."
+
+and later:
+
+> "**OAuth tests:** wrong audience, issuer, resource, scope, signature,
+> expiry, redirect URI, `state`, and PKCE verifier; token passthrough must
+> fail."
+
+Its Appendix F names the tool category the tests expect and that the market
+does not yet have:
+
+> "**Policy-as-code test harness** | Asserts allow/deny decisions against the
+> documented policy, with stable reason codes | `GOV`, `GW`, `AUTHZ`"
+
+and, in the same table:
+
+> "MCP client utility that can send raw JSON-RPC | Reproducible
+> `tools/list`, `tools/call`, `resources/read`, `prompts/get` requests
+> outside the model's control | All runtime tests"
+
+Two of the eight minimum test categories — the authorization matrix and the
+token tests — have no dedicated tool. Every tool below covers conformance,
+robustness, poisoning or red-teaming. None of them answers "does this server
+refuse what it must refuse, for every identity".
+
+**The same gap was reached from the other side, independently.**
+
+The agentgateway evaluation of October 2026
+([kuberneteslab.dev](https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/))
+concludes that "turning a policy on is not the end of the job: send real
+calls and check", after finding a policy that "was reported as accepted and
+still did not enforce what it said".
+
+The OWASP guide says the same thing about where to test:
+"Exercise the actual transport and JSON-RPC handler, not only the policy
+function. A secure policy that is bypassed by a second handler is not
+secure."
+
+**The exposure is large and growing.**
 
 - 38% of publicly reachable MCP servers expose tools with **no
-  authentication**: 195 of 514 servers in a continuous scan, with a forex
-  platform (45 tools), a social-media automation service and a booking system
-  among them — [securityboulevard.com](https://securityboulevard.com/2026/11/why-mcp-security-disclosure-is-broken-and-what-the-industry-needs/)
+  authentication**: 195 of 514 servers in a continuous scan —
+  [securityboulevard.com](https://securityboulevard.com/2026/11/why-mcp-security-disclosure-is-broken-and-what-the-industry-needs/)
   · [aminrj.com](https://aminrj.com/posts/mcp-security-after-1year/).
 - Exposed servers roughly tripled in nine months: 492 (July 2025) → **1,467**
   (April 2026), 74% of them on major cloud providers —
   [Trend Micro](https://www.trendaisecurity.com/en-us/resources-insights/deep-research/update-on-exposed-mcp-servers-the-threat-widens-to-the-cloud).
 - Censys telemetry counted **21,000+** publicly accessible MCP endpoints by
-  May 2026; a dynamic study of 640 confirmed production servers found **91.8%**
-  without OAuth and 687 tool instances exposing shell execution with no access
-  control — [arXiv 2608.00150](https://arxiv.org/html/2608.00150).
-- April 2026, OX Security: a design flaw in the **official MCP SDKs' stdio
-  transport** affected an estimated **200,000 instances** across 150M+ package
-  downloads — [vicytech.com](https://www.vicytech.com/blog/mcp-hacking-attack-techniques-2026).
-- CVE volume: **30 CVEs** against MCP servers in the ecosystem's first year,
-  tracked with severity and remediation status —
+  May 2026; a dynamic study of 640 confirmed production servers found
+  **91.8%** without OAuth and 687 tool instances exposing shell execution
+  with no access control — [arXiv 2608.00150](https://arxiv.org/html/2608.00150).
+- CVE volume: **30 CVEs** against MCP servers in the ecosystem's first year —
   [aminrj.com](https://aminrj.com/posts/mcp-security-after-1year/).
-- April 2026, "Comment and Control" (Johns Hopkins, Aonan Guan and
-  collaborators): a poisoned GitHub pull-request title hijacked **Claude Code,
-  Gemini CLI and GitHub Copilot** and exfiltrated GitHub Actions secrets. The
+- April 2026, "Comment and Control" (Johns Hopkins): a poisoned GitHub pull
+  request title hijacked Claude Code, Gemini CLI and GitHub Copilot. The
   vendors paid bounties and issued no CVEs —
-  [ai-hacking.cyberchaos.nl](https://ai-hacking.cyberchaos.nl/incidents) ·
-  [futureagi.com](https://futureagi.com/blog/ai-agent-security-risks/).
+  [ai-hacking.cyberchaos.nl](https://ai-hacking.cyberchaos.nl/incidents).
 
-None of these are about *tools that prove policy enforcement* — they are about
-the exposure the gap sits in. That is the argument for the gap, not for this
-tool in particular.
+None of those numbers is about tools that prove access control. They are the
+size of the hole the product stands in.
 
 ## 3. What already exists — the honest landscape
 
-The space is not empty. These tools all exist, all work on recorded MCP
-sessions, and several are more mature than this one:
+The space is crowded, and a comparison that hides that would be worthless.
+Everything below was checked on 2026-11-14; star counts and download counts
+are from that day.
+
+### Live testing and fuzzing
 
 | Tool | What it does | What it is not |
 |---|---|---|
-| [agent-strace](https://pypi.org/project/agent-strace/) | Records and replays tool calls; `audit --policy` checks a session against a policy file and exits 1 for CI | Its policy is an agent **scope** (file globs, commands, network), not an MCP tool authorization policy with per-client grants and conditional rules |
-| [mcpsnoop](https://github.com/kerlenton/mcpsnoop) | "Wireshark for MCP": proxy capture, `mcpsnoop check` gates CI on captured sessions (routing mismatch, tool drift, loosened annotations, schema problems), SARIF/JUnit, a GitHub Action | Judges **protocol and session health**, not "your policy said deny" |
-| [mcp-conformance](https://github.com/tomtom215/mcp-conformance) | Clause-by-clause conformance against the MCP specification over recorded traces; every check falsified by a committed violation trace | Judges the **specification**, not your authorization policy |
-| [mcp-traceguard](https://github.com/tiempo0206/mcp-traceguard) | Policy checks plus baseline/drift checks, SHA-256 chained traces, replayable scenario packs, SARIF | Compares against a **baseline of what was approved**, not against your policy's decision rules |
-| [assay](https://crates.io/crates/assay-policy) | Runtime policy gate, tamper-evident evidence bundles, "declared-vs-observed" conformance, offline-verifiable archives | Enforces **at runtime**; a Rust tool with its own policy format |
-| [snulbug](https://pypi.org/project/snulbug/) | Replay and audit logs, **learns** a policy from observed traffic, conformance packs, blast-radius analysis | Derives policy from traffic rather than checking yours |
-| [Pipelock](https://pipelab.org/) | Commercial agent firewall with receipts and compliance proof | A vendor product, not an open tool |
+| [mcp-assert](https://github.com/blackwell-systems/mcp-assert) (26★) | Lints, tests and fuzzes servers over real stdio/SSE/HTTP with YAML assertions and 24 error codes; a GitHub Action; scanned 102 servers and reported 4,794 schema issues across 55 of them | Asserts **behaviour against your expectations**. It has no identity dimension, no policy model and no signed evidence; nothing in it is about *who* called |
+| [mcp-fence](https://github.com/DaoyuanLi2816/mcp-fence) (37★) | Config and source scanning, live inspection, schema-aware fuzzing, Docker sandboxing, SARIF and HTML reports; stdio only, HTTP is static-only | Finds weak metadata and crashes. It does not test an authorization decision |
+| [mcp-fuzz](https://github.com/shriramkv/mcp-fuzz) (19★) | Stdlib-only robustness harness: 17 malformed and adversarial JSON-RPC cases, graded A–F on crash resistance, responsiveness, error correctness and envelope hygiene | Judges whether the server survives bad input, not whether it enforces a policy |
+| [mcp-server-fuzzer](https://github.com/tavric-labs/mcp-server-fuzzer) (46★) | Black-box security assessment for live MCP servers | No identity model, no policy comparison |
+| [mcpsec](https://github.com/manthanghasadiya/mcpsec) (26★) | AI-driven dynamic protocol fuzzer for MCP, aimed at state violations and application-layer flaws | Model-driven and non-deterministic |
+| [MCTS](https://github.com/MCP-Audit/MCTS) (31★) | Local-first scanner: static and live tool discovery, risk scores, JSON/SARIF/HTML | A scanner with grades, not a conformance harness |
+| [OpenTrustBench](https://github.com/eulogik/OpenTrustBench) (14★) | OWASP-mapped findings, trust cards graded A–F, SARIF, CI gate | Same shape as above |
+
+### Scanning, metadata and model-driven red teaming
+
+| Tool | What it does | What it is not |
+|---|---|---|
+| [MCP-Scan](https://github.com/invariantlabs-ai/mcp-scan) | Static scan of installed servers for tool poisoning and cross-origin escalation, plus a runtime proxy; the semantic pass calls a hosted guardrail | Its strong pass needs an API key and an LLM, so results are neither offline nor deterministic |
+| [agent-audit-kit](https://github.com/sattyamjjain/agent-audit-kit) (12★) | Static scanner, 501 rules across 14 categories, OWASP mapping, GitHub Action, SARIF | Static only |
+| [mcp-audit](https://github.com/apisec-inc/mcp-audit) (166★) | Scans MCP client configuration for exposed secrets and shadow APIs, generates AI-BOMs | Scans configuration, not the running server |
+| [promptfoo](https://www.promptfoo.dev/docs/red-team/mcp-security-testing/) (now OpenAI) | Red-teaming agents and MCP servers with 100+ attack plugins, an MCP provider and an evil MCP server | Needs a model and an API key; the result is a judgement about a model's behaviour, not a deterministic gate on a server's decision |
+
+### Recorded sessions and runtime enforcement
+
+| Tool | What it does | What it is not |
+|---|---|---|
+| [agent-strace](https://pypi.org/project/agent-strace/) | Records and replays tool calls; `audit --policy` checks a session against a policy file and exits 1 for CI | Its policy is an agent **scope** (globs, commands, network), not a per-identity tool authorization matrix; it needs traffic first |
+| [mcpsnoop](https://github.com/kerlenton/mcpsnoop) | "Wireshark for MCP": proxy capture, CI gating on captured sessions, SARIF and JUnit, an Action | Judges protocol and session health, not your policy's decision |
+| [mcp-conformance](https://github.com/tomtom215/mcp-conformance) | Clause-by-clause conformance against the MCP specification over recorded traces | Judges the **specification** |
+| [mcp-traceguard](https://github.com/tiempo0206/mcp-traceguard) | Policy checks, baseline and drift checks, SHA-256 chained traces, replayable scenario packs, SARIF | Compares against a **baseline of what was approved**, not against your policy's decision rules |
+| [assay](https://crates.io/crates/assay-policy) | Runtime policy gate, tamper-evident evidence bundles, declared-vs-observed conformance | A Rust runtime with its own policy format; enforces rather than tests |
+| [snulbug](https://pypi.org/project/snulbug/) | Replays and audits logs, **learns** a policy from observed traffic, conformance packs, blast-radius analysis | Derives the policy from traffic instead of checking yours |
+| [Pipelock](https://pipelab.org/) | Commercial agent firewall with receipts and compliance proof | A vendor product |
+
+### Demand, measured
+
+PyPI monthly downloads on 2026-11-14: `agent-strace` 3,170 · `mcp-scan` 2,981
+· `snulbug` 761 · `mcp-fence` 118. `mcp-fuzz` is not published on PyPI.
+
+Read honestly, that says two things at once: the category has real pull, and
+the pull is concentrated in the tools that sit **in the traffic path** or
+**call a hosted model**. The offline, deterministic half of the market is
+thin.
 
 ## 4. The claim we can actually make
 
 **We are not the best, and we should not say we are.** This project is at
-v0.1.4, has five stars, no users, no independent evaluation and no benchmark.
-Several of the tools above are older, more capable and better documented.
+v1.0.0, has a handful of stars, no users, no independent evaluation and no
+benchmark. mcp-assert is older, better documented and has production
+adoption we cannot match. promptfoo has a company's distribution behind it.
 
 What is true, and narrow:
 
-1. **One question, answered offline.** Given a policy file and a JSONL trace,
-   `mcp-attest` re-evaluates the policy locally and reports every call where
-   the recorded decision and the re-computed decision disagree. No proxy, no
-   MCP SDK, no server, no model, no API key.
-2. **Zero dependencies, one install.** Python 3.10+ and the standard library.
-   It runs in CI in under a second on a committed trace. The alternatives that
-   judge recorded sessions ship a recorder or a proxy (mcpsnoop,
-   mcp-conformance), a runtime (agent-strace, assay) or a learned policy
-   (snulbug).
-3. **The policy language is the one you wrote.** Per-client allow and deny
-   lists, conditions on arguments, a default decision — evaluated by your
-   rules, not by a baseline, a scope file or a specification clause.
-4. **Evidence out of the box.** Findings carry the exact tool, arguments and
-   decision; receipts are hash-chained and optionally HMAC-signed.
+1. **The authorization matrix, against a live server.** Write who may call
+   what; the harness derives every identity × tool pair, derives the
+   arguments from the schema, sends the call as that identity and compares
+   the server's decision with the policy's. Nothing else in the list does
+   this.
+2. **Cases for what a generated probe cannot say.** An identifier belonging to
+   another principal, an amount above a threshold, a tool that must be
+   refused — the cross-user test the OWASP guide puts first among the
+   critical ones.
+3. **Token validation.** A malformed token, a token with a tampered
+   signature and an expired `alg: none` JWT are sent and must be refused.
+4. **Deterministic and offline.** No model, no API key, no network beyond the
+   server under test. The same policy and the same server give the same
+   report every time, which is what makes it usable as a gate.
+5. **Evidence a third party can check.** Every call is recorded with request,
+   response, identity, timestamp, expected decision and observed decision;
+   the records are hash-chained and optionally HMAC-signed, and `attest
+   verify` checks them offline without trusting the machine that produced
+   them.
+6. **Nothing in the request path.** It cannot block a call. If the answer
+   needed is "stop the call", use a gateway.
 
 What is **not** true, and should not be written anywhere:
 
-- We are not the only tool that judges recorded MCP sessions.
-- We are not more thorough: nine checks against dozens in the mature tools.
-- We are not more expressive: our policy language is simpler than CEL.
+- We are not more thorough than mcp-assert or mcp-fence; they cover
+  conformance and robustness in more depth.
+- We are not a scanner: we do not judge a schema or a description for its own
+  sake.
+- We are not a red team: there is no model in the loop, so there is no
+  attempt to make an agent misbehave.
 - We have not been evaluated by anyone but us.
 
-If a buyer asks "why you and not mcpsnoop?", the honest answer is: if you want
-to watch the wire and gate on protocol drift, use mcpsnoop; if you want to
-enforce at runtime, use a gateway. Use this if you want one offline question
-answered about the policy you already wrote, with nothing installed in the
-path.
+If a buyer asks "why you and not mcp-assert?", the honest answer is: if you
+want to know whether your server returns the right answer, use mcp-assert. If
+you want to know whether your **access control** holds for every identity, and
+you want the evidence to be signed and reproducible, use this.
 
 ## 5. Sources that need care
 
@@ -143,10 +195,13 @@ path.
   is Pipelock's vendor survey; an unrelated offline scan report of the same
   name exists at
   [agent-audit-kit](https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md)
-  (2,303 public server configs, 50.6% remote servers without auth). Cite the
-  one you actually read.
-- `media.defense.gov` and `nsa.gov` return HTTP 403 to automated fetches (the
-  NSA file serves fine in a browser); the same NSA/CISA PDF is the document to
-  cite by title, with `nsa.gov` as the link to prefer in public documents.
+  (2,303 public server configs, 50.6% of remote servers without auth). Cite
+  the one you actually read.
+- `media.defense.gov` and `nsa.gov` return HTTP 403 to automated fetches; the
+  NSA file serves fine in a browser. Cite the document by title with
+  `nsa.gov` as the link to prefer.
 - `securityboulevard.com` shows an interstitial to automated fetches and the
   article opens normally in a browser.
+- Star counts and download counts move. The ones quoted here are dated
+  2026-11-14 and should be re-checked before they are used in a sales
+  conversation.
