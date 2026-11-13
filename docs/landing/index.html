@@ -10,43 +10,47 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://balanov.pro/mcp-attest/" />
   <meta property="og:image" content="https://opengraph.githubassets.com/1/Balanov/mcp-attest" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e0f11'/%3E%3Cpath d='M32 12l16 8v10c0 10-6.7 18.6-16 22-9.3-3.4-16-12-16-22V20l16-8z' fill='none' stroke='%235fd399' stroke-width='4'/%3E%3Cpath d='M24 32l6 6 10-12' fill='none' stroke='%235fd399' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e0f11'/%3E%3Cpath d='M32 12l16 8v10c0 10-6.7 18.6-16 22-9.3-3.4-16-12-16-22V20l16-8z' fill='none' stroke='%232fd9a6' stroke-width='4'/%3E%3Cpath d='M24 32l6 6 10-12' fill='none' stroke='%232fd9a6' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #fafaf8;
-      --panel: #f2f1ed;
-      --ink: #1a1a1e;
-      --muted: #555c56;
-      --faint: #8a9089;
-      --line: #e4e2dc;
-      --accent: #14713f;
-      --accent-soft: #e3f0e8;
-      --track: #e9e7e1;
-      --bar-other: #b9beb8;
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --ink: #12141a;
+      --muted: #5a6270;
+      --faint: #8b93a1;
+      --line: #e5e6ea;
+      --accent: #0d8f63;
+      --accent-soft: #e2f4ec;
+      --navy: #0d1526;
+      --navy-line: #1d2942;
+      --navy-ink: #e9edf6;
+      --navy-muted: #8c9ab5;
       --btn-bg: #ffffff;
       --mono: "IBM Plex Mono", Consolas, monospace;
-      --term-bg: #141619;
-      --term-ink: #eceeea;
-      --term-dim: #6b726d;
-      --term-green: #5fd399;
-      --term-red: #f28b82;
-      --term-amber: #e2b04a;
+      --term-bg: #0b0e14;
+      --term-ink: #e9edf3;
+      --term-dim: #78839a;
+      --term-green: #2fd9a6;
+      --term-red: #ff6b60;
+      --term-amber: #f5b942;
       color-scheme: light;
     }
     [data-theme="dark"] {
-      --bg: #0e0f11;
+      --bg: #0b0c0f;
       --panel: #141619;
       --ink: #eceeea;
       --muted: #9ba19c;
       --faint: #6b726d;
       --line: #24282b;
-      --accent: #5fd399;
-      --accent-soft: #182a21;
-      --track: #1b1e21;
-      --bar-other: #3a4045;
+      --accent: #2fd9a6;
+      --accent-soft: #16261f;
+      --navy: #0e131d;
+      --navy-line: #1e2637;
+      --navy-ink: #e9edf6;
+      --navy-muted: #8c9ab5;
       --btn-bg: #1a1d20;
       color-scheme: dark;
     }
@@ -57,30 +61,39 @@
       font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased;
       transition: background 200ms ease-out, color 200ms ease-out;
     }
-    .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
     a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
     ::selection { background: var(--accent-soft); }
 
-    header.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; gap: 12px; }
-    .brand { display: flex; align-items: center; gap: 9px; color: var(--ink); font: 600 15px var(--mono); letter-spacing: 0.12em; }
+    header.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; gap: 16px; border-bottom: 1px solid var(--line); }
+    .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font: 600 15px var(--mono); letter-spacing: 0.12em; }
     .brand:hover { text-decoration: none; }
     .brand svg { width: 20px; height: 20px; }
-    .top-right { display: flex; align-items: center; gap: 10px; }
-    .gh-link { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 14px; min-height: 44px; transition: color 150ms; }
-    .gh-link:hover { color: var(--ink); text-decoration: none; }
-    .gh-link svg { width: 19px; height: 19px; }
+    .ver { font: 500 11px var(--mono); color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; letter-spacing: 0.06em; }
+    .top-right { display: flex; align-items: center; gap: 14px; }
+    .nav { display: flex; gap: 20px; }
+    .nav a { color: var(--muted); font-size: 14px; }
+    .nav a:hover { color: var(--ink); text-decoration: none; }
+    .gh-stats { display: inline-flex; overflow: hidden; background: var(--btn-bg); border: 1px solid var(--line); border-radius: 8px; }
+    .gh-stat { display: inline-flex; align-items: stretch; color: var(--ink); font: 500 12px var(--mono); }
+    .gh-stat + .gh-stat { border-left: 1px solid var(--line); }
+    .gh-stat:hover { text-decoration: none; background: var(--panel); }
+    .gh-stat .label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; }
+    .gh-stat .label svg { width: 14px; height: 14px; color: var(--muted); }
+    .gh-stat .count { display: inline-flex; align-items: center; padding: 8px 10px; border-left: 1px solid var(--line); color: var(--muted); background: var(--panel); min-width: 34px; justify-content: center; }
+    .gh-stat:hover .count { color: var(--accent); }
     .lang-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
     .lang-switch button {
       appearance: none; border: 0; background: transparent; color: var(--faint);
-      font: 500 12px var(--mono); padding: 10px 12px; min-height: 40px; cursor: pointer; transition: color 150ms, background 150ms;
+      font: 500 12px var(--mono); padding: 9px 11px; cursor: pointer; transition: color 150ms, background 150ms;
     }
     .lang-switch button:hover { color: var(--ink); }
     .lang-switch button[aria-pressed="true"] { background: var(--line); color: var(--ink); }
     .theme-toggle {
       appearance: none; display: inline-flex; align-items: center; justify-content: center;
-      width: 40px; min-height: 40px; border: 1px solid var(--line); border-radius: 7px;
+      width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 7px;
       background: transparent; color: var(--muted); cursor: pointer; transition: color 150ms, border-color 150ms;
     }
     .theme-toggle:hover { color: var(--ink); border-color: var(--faint); }
@@ -88,87 +101,98 @@
     [data-theme="light"] .icon-moon { display: none; }
     [data-theme="dark"] .icon-sun { display: none; }
 
-    .hero { padding: 48px 0 0; }
-    .kicker { font: 500 12px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 12px; }
-    h1 { font: 600 clamp(56px, 12vw, 122px)/1 var(--mono); letter-spacing: -0.04em; margin: 0 0 18px; }
-    .tagline { font-size: 19px; color: var(--muted); margin: 0 0 24px; font-weight: 400; }
-    .tagline b { color: var(--ink); font-weight: 500; }
+    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; padding: 60px 0 0; }
+    .kicker { display: inline-flex; align-items: center; gap: 9px; font: 500 12px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 20px; }
+    .kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    h1 { font: 600 clamp(40px, 5.2vw, 66px)/1.04 var(--sans, "IBM Plex Sans"), sans-serif; letter-spacing: -0.03em; margin: 0 0 22px; }
+    .tagline { font-size: 19px; color: var(--muted); margin: 0 0 28px; max-width: 540px; }
+    .tagline b { color: var(--ink); font-weight: 600; }
     .hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .install {
       display: inline-flex; align-items: center; gap: 12px; max-width: 100%;
       background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 6px 6px 6px 16px;
     }
-    .install code { font: 400 13.5px var(--mono); color: var(--ink); overflow-x: auto; white-space: nowrap; padding: 8px 0; }
+    .install code { font: 400 13.5px var(--mono); color: var(--ink); white-space: nowrap; }
     .install .dollar { color: var(--faint); user-select: none; }
     .copy-btn {
       appearance: none; border: 1px solid var(--line); background: var(--btn-bg); color: var(--muted);
-      border-radius: 6px; font: 500 12px var(--mono); padding: 8px 12px; min-height: 36px; cursor: pointer;
+      border-radius: 6px; font: 500 12px var(--mono); padding: 8px 12px; cursor: pointer;
       transition: color 150ms; flex-shrink: 0;
     }
     .copy-btn:hover { color: var(--ink); border-color: var(--faint); }
     .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--btn-bg);
+      color: var(--ink); border-radius: 9px; padding: 11px 16px; font: 500 13.5px var(--mono); transition: border-color 150ms, color 150ms;
+    }
+    .btn:hover { border-color: var(--faint); text-decoration: none; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { filter: brightness(1.06); }
+    .facts { display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 30px 0 0; padding: 0; list-style: none; font: 400 13px var(--mono); color: var(--muted); }
+    .facts li { position: relative; padding-left: 16px; }
+    .facts li::before { content: ""; position: absolute; left: 0; top: 9px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
-    .gh-stats { display: inline-flex; flex: none; overflow: hidden; background: var(--btn-bg); border: 1px solid var(--line); border-radius: 9px; }
-    .gh-stat { display: inline-flex; align-items: stretch; color: var(--ink); font: 500 12.5px var(--mono); min-height: 44px; transition: background 150ms; }
-    .gh-stat + .gh-stat { border-left: 1px solid var(--line); }
-    .gh-stat:hover { text-decoration: none; background: var(--panel); }
-    .gh-stat:focus-visible { outline-offset: -3px; }
-    .gh-stat .label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; }
-    .gh-stat .label svg { width: 14px; height: 14px; color: var(--muted); }
-    .gh-stat .count { display: inline-flex; align-items: center; padding: 8px 10px; border-left: 1px solid var(--line); color: var(--muted); background: var(--panel); min-width: 38px; justify-content: center; }
-    .gh-stat:hover .count { color: var(--accent); }
-
-    .terminal { margin: 24px 0 0; background: var(--term-bg); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-    .terminal-bar { display: flex; align-items: center; gap: 7px; padding: 13px 16px; border-bottom: 1px solid #24282b; }
-    .terminal-bar .dot { width: 10px; height: 10px; border-radius: 50%; background: #2b2f33; }
-    .terminal-bar .term-title { margin-left: auto; font: 400 11.5px var(--mono); color: var(--term-dim); }
-    .terminal-body { padding: 22px 22px 26px; font: 400 13.5px/1.8 var(--mono); min-height: 300px; white-space: pre-wrap; word-break: break-word; color: var(--term-ink); }
+    .card { background: var(--navy); border: 1px solid var(--navy-line); border-radius: 16px; overflow: hidden; color: var(--navy-ink); }
+    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--navy-line); }
+    .card-head .label { font: 500 11.5px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-muted); }
+    .gap { display: grid; grid-template-columns: 132px 1fr; gap: 14px 16px; align-items: center; padding: 20px 22px; border-bottom: 1px solid var(--navy-line); }
+    .gap .k { font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy-muted); }
+    .gap .v { font: 400 14px var(--mono); }
+    .gap .v.ok { color: #7fe7c4; }
+    .gap .v.bad { color: var(--term-red); }
+    .gap .v.full { grid-column: 1 / -1; }
+    .chip { display: inline-block; background: rgba(255,107,96,.12); border: 1px solid rgba(255,107,96,.45); color: var(--term-red); font: 500 12.5px var(--mono); padding: 8px 14px; border-radius: 7px; }
+    .terminal-body { padding: 20px 22px 24px; font: 400 13px/1.75 var(--mono); min-height: 260px; white-space: pre-wrap; word-break: break-word; color: var(--term-ink); }
     .terminal-body .prompt { color: var(--term-green); }
     .terminal-body .dim { color: var(--term-dim); }
     .terminal-body .ok { color: var(--term-green); }
     .terminal-body .crit { color: var(--term-red); }
     .terminal-body .warn { color: var(--term-amber); }
-    .cursor { display: inline-block; width: 8px; height: 16px; background: var(--term-green); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+    .cursor { display: inline-block; width: 8px; height: 15px; background: var(--term-green); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
 
-    section { padding: 48px 0 0; }
-    h2 { font: 500 13px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 26px; }
+    section { padding: 72px 0 0; }
+    h2 { font: 500 13px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 30px; }
     h2 a { color: var(--faint); }
     h2 a:hover { color: var(--accent); }
 
-    .rules { width: 100%; border-collapse: collapse; font: 400 13.5px var(--mono); }
-    .rules th { text-align: left; font-weight: 500; color: var(--faint); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 14px 10px 0; border-bottom: 1px solid var(--line); }
-    .rules td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--muted); }
-    .rules td.id { color: var(--accent); white-space: nowrap; }
-    .rules td.name { color: var(--ink); white-space: nowrap; }
-    @media (max-width: 620px) {
-      .rules thead { display: none; }
-      .rules td { display: block; padding: 3px 0; border: 0; }
-      .rules tr { display: block; border-bottom: 1px solid var(--line); padding: 12px 0; }
-    }
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+    .flow .item { border-top: 2px solid var(--accent); padding-top: 18px; }
+    .flow .n { font: 500 11.5px var(--mono); letter-spacing: 0.16em; color: var(--faint); }
+    .flow .t { font: 600 16px var(--mono); color: var(--ink); margin-top: 10px; }
+    .flow .d { font-size: 14.5px; color: var(--muted); margin-top: 8px; }
 
-    .why { display: grid; gap: 12px; }
-    .why a.card {
-      display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 15px 18px; color: var(--ink);
-    }
-    .why a.card:hover { border-color: var(--faint); text-decoration: none; }
-    .why .src { font: 500 11.5px var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; }
-    .why .quote { margin: 7px 0 0; font-size: 15px; color: var(--muted); }
+    .checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .check { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+    .check .id { font: 600 12px var(--mono); color: var(--accent); letter-spacing: 0.08em; }
+    .check .n { font: 500 14px var(--mono); color: var(--ink); margin-top: 8px; }
+    .check .d { font-size: 14px; color: var(--muted); margin-top: 6px; }
 
-    .spec-row { display: flex; flex-wrap: wrap; gap: 10px 26px; font: 400 13px var(--mono); color: var(--muted); padding: 4px 0 0; }
-    .spec-row b { color: var(--ink); font-weight: 500; }
-
-    .steps { counter-reset: step; display: grid; gap: 14px; }
-    .step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
-    .step .n { font: 600 13px var(--mono); color: var(--accent); border: 1px solid var(--line); border-radius: 8px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-    .step .t { font: 500 14.5px var(--mono); color: var(--ink); }
+    .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+    .steps { counter-reset: step; display: grid; gap: 16px; }
+    .step { display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: start; }
+    .step .n { font: 600 12.5px var(--mono); color: var(--accent); border: 1px solid var(--line); border-radius: 7px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+    .step .t { font: 500 15px var(--mono); color: var(--ink); }
     .step .d { font-size: 14.5px; color: var(--muted); margin-top: 2px; }
-    .step code { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+    .step code, .code code { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+    .code { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; overflow-x: auto; }
+    .code pre { margin: 0; font: 400 12.5px/1.7 var(--mono); color: var(--muted); }
+
+    .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .why a.card2 {
+      display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; color: var(--ink);
+    }
+    .why a.card2:hover { border-color: var(--faint); text-decoration: none; }
+    .why .src { font: 500 11.5px var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; }
+    .why .quote { margin: 9px 0 0; font-size: 14.5px; color: var(--muted); }
+
+    .spec-row { display: flex; flex-wrap: wrap; gap: 12px 30px; font: 400 13.5px var(--mono); color: var(--muted); padding: 4px 0 0; }
+    .spec-row b { color: var(--ink); font-weight: 500; }
 
     details.cite { margin-top: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
     details.cite summary {
       cursor: pointer; list-style: none; padding: 14px 18px; font: 500 13px var(--mono); color: var(--muted);
-      display: flex; justify-content: space-between; align-items: center; min-height: 48px; transition: color 150ms;
+      display: flex; justify-content: space-between; align-items: center; transition: color 150ms;
     }
     details.cite summary:hover { color: var(--ink); }
     details.cite summary::-webkit-details-marker { display: none; }
@@ -178,14 +202,20 @@
     .cite-body pre { margin: 0; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 400 12.5px/1.7 var(--mono); overflow-x: auto; color: var(--muted); }
     .cite-body .copy-btn { position: absolute; top: 22px; right: 26px; }
 
-    footer { margin-top: 52px; border-top: 1px solid var(--line); padding: 22px 0 34px; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; font: 400 12.5px var(--mono); color: var(--faint); }
+    footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 24px 0 36px; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; font: 400 12.5px var(--mono); color: var(--faint); }
     footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
-    footer a { color: var(--muted); display: inline-flex; align-items: center; min-height: 32px; }
+    footer a { color: var(--muted); }
     footer a:hover { color: var(--accent); text-decoration: none; }
 
-    @media (max-width: 600px) {
-      .hero { padding-top: 32px; }
-      .terminal-body { font-size: 11.5px; min-height: 280px; padding: 16px; }
+    @media (max-width: 1040px) {
+      .hero { grid-template-columns: 1fr; gap: 36px; }
+      .checks, .why, .flow { grid-template-columns: repeat(2, 1fr); }
+      .cols2 { grid-template-columns: 1fr; gap: 36px; }
+      .nav { display: none; }
+    }
+    @media (max-width: 620px) {
+      .checks, .why, .flow { grid-template-columns: 1fr; }
+      .terminal-body { font-size: 11.5px; }
       .install code { font-size: 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -200,12 +230,24 @@
       <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
         <span>MCP-ATTEST</span>
+        <span class="ver">0.1.3</span>
       </a>
       <div class="top-right">
-        <a class="gh-link" href="https://github.com/Balanov/mcp-attest">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53.49-2.69.49-.23 0-.81.08-1.35-.74-.65-1.24.52-1.31 0-1.05-.07-1.51.72-.03.25-.72.47-.73.66.02.6.42.6.42.42 1.17 1.1.84 1.37.84.4-.01.77-.28 1.19-.71.04-.08.16-.35.19-.49-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.66 7.66 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-          GitHub
-        </a>
+        <nav class="nav">
+          <a href="#checks" data-i18n="navChecks">Checks</a>
+          <a href="#how" data-i18n="navHow">How it works</a>
+          <a href="#ci" data-i18n="navCi">CI</a>
+        </nav>
+        <div class="gh-stats">
+          <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/stargazers" aria-label="Star MCP-ATTEST on GitHub">
+            <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><span data-i18n="star">Star</span></span>
+            <span class="count" id="gh-stars">0</span>
+          </a>
+          <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/forks" aria-label="Fork MCP-ATTEST on GitHub">
+            <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg><span data-i18n="fork">Fork</span></span>
+            <span class="count" id="gh-forks">0</span>
+          </a>
+        </div>
         <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Switch theme / Переключить тему" title="Light / dark">
           <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
@@ -219,79 +261,102 @@
 
     <main>
       <section class="hero">
-        <p class="kicker" data-i18n="kicker">Open source · MIT · no dependencies</p>
-        <h1>MCP-ATTEST</h1>
-        <p class="tagline" data-i18n="tagline"><b>Prove the policy enforces.</b> Your policy vs. your trace, checked offline.</p>
-        <div class="hero-actions">
-          <div class="install">
-            <code><span class="dollar">$ </span>pipx install mcp-attest</code>
-            <button class="copy-btn" type="button" data-copy="install-cmd" data-i18n="copy">Copy</button>
+        <div class="hero-left">
+          <p class="kicker" data-i18n="kicker">Open source · MIT · no dependencies</p>
+          <h1 data-i18n="headline">Prove that your MCP policy actually enforces.</h1>
+          <p class="tagline" data-i18n="tagline">Two files in — the policy you wrote and the trace of what really happened. Every place they disagree comes back as a finding.</p>
+          <div class="hero-actions">
+            <div class="install">
+              <code><span class="dollar">$ </span>pipx install mcp-attest</code>
+              <button class="copy-btn" type="button" data-copy="install-cmd" data-i18n="copy">Copy</button>
+            </div>
+            <span id="install-cmd" hidden>pipx install mcp-attest</span>
+            <a class="btn primary" href="https://github.com/Balanov/mcp-attest" data-i18n="ctaGit">GitHub</a>
+            <a class="btn" href="https://pypi.org/project/mcp-attest/" data-i18n="ctaPypi">PyPI</a>
           </div>
-          <span id="install-cmd" hidden>pipx install mcp-attest</span>
-
-          <div class="gh-stats">
-            <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/stargazers" aria-label="Star MCP-ATTEST on GitHub">
-              <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>Star</span>
-              <span class="count" id="gh-stars">0</span>
-            </a>
-            <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/forks" aria-label="Fork MCP-ATTEST on GitHub">
-              <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg>Fork</span>
-              <span class="count" id="gh-forks">0</span>
-            </a>
-          </div>
+          <ul class="facts">
+            <li data-i18n="f1">9 checks, C1–C9</li>
+            <li data-i18n="f2">0 runtime dependencies</li>
+            <li data-i18n="f3">Python 3.10+</li>
+            <li data-i18n="f4">No network, no telemetry</li>
+          </ul>
         </div>
 
-        <div class="terminal" role="img" aria-label="Terminal demo: attest check reporting a policy that was accepted but never enforced, a fail-open call and a changed tool description">
-          <div class="terminal-bar" aria-hidden="true">
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-            <span class="term-title">sh — attest check</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="label" data-i18n="cardTitle">The enforcement gap</span>
+            <span class="label" data-i18n="cardCmd">attest check</span>
+          </div>
+          <div class="gap">
+            <div class="k" data-i18n="gapPolicy">Policy says</div>
+            <div class="v ok">shell__exec &rarr; deny</div>
+            <div class="k" data-i18n="gapGateway">Gateway did</div>
+            <div class="v bad">shell__exec &rarr; allow</div>
+            <div class="k" data-i18n="gapHarness">mcp-attest</div>
+            <div class="v full"><span class="chip">C6 CRITICAL · policy denied, gateway allowed</span></div>
           </div>
           <div class="terminal-body" id="terminal-body" aria-hidden="true"></div>
         </div>
       </section>
 
-      <section id="rules">
+      <section id="how">
+        <h2 data-i18n="howTitle">How it works</h2>
+        <div class="flow">
+          <div class="item"><div class="n">01</div><div class="t" data-i18n="h1t">POLICY</div><div class="d" data-i18n="h1d">The rules you wrote, as one JSON file: allow, deny, conditions, defaults.</div></div>
+          <div class="item"><div class="n">02</div><div class="t" data-i18n="h2t">TRACE</div><div class="d" data-i18n="h2d">What the gateway actually decided, recorded as newline-delimited JSON.</div></div>
+          <div class="item"><div class="n">03</div><div class="t" data-i18n="h3t">REPLAY</div><div class="d" data-i18n="h3d">Every recorded call is re-evaluated locally, with the same arguments.</div></div>
+          <div class="item"><div class="n">04</div><div class="t" data-i18n="h4t">FINDINGS</div><div class="d" data-i18n="h4d">Evidence, a blocking exit code, and an optional hash-chained receipt trail.</div></div>
+        </div>
+      </section>
+
+      <section id="checks">
         <h2 data-i18n="rulesTitle">Nine checks</h2>
-        <table class="rules">
-          <thead><tr><th>ID</th><th data-i18n="colRule">Rule</th><th data-i18n="colFails">Fails when</th></tr></thead>
-          <tbody>
-            <tr><td class="id">C1</td><td class="name" data-i18n="c1n">default-deny</td><td data-i18n="c1d">an unset allowlist means "allow everything"</td></tr>
-            <tr><td class="id">C2</td><td class="name" data-i18n="c2n">list/call parity</td><td data-i18n="c2d">a tool hidden from tools/list is still callable by name</td></tr>
-            <tr><td class="id">C3</td><td class="name" data-i18n="c3n">narrowing only</td><td data-i18n="c3d">a request widens a client's grant</td></tr>
-            <tr><td class="id">C4</td><td class="name" data-i18n="c4n">credential separation</td><td data-i18n="c4d">the client token is replayed upstream</td></tr>
-            <tr><td class="id">C5</td><td class="name" data-i18n="c5n">fail closed</td><td data-i18n="c5d">a call is allowed because the check errored</td></tr>
-            <tr><td class="id">C6</td><td class="name" data-i18n="c6n">enforcement parity</td><td data-i18n="c6d">the policy denies it, the gateway allowed it</td></tr>
-            <tr><td class="id">C7</td><td class="name" data-i18n="c7n">shadow MCP</td><td data-i18n="c7d">a server is reachable outside the gateway</td></tr>
-            <tr><td class="id">C8</td><td class="name" data-i18n="c8n">receipt chain</td><td data-i18n="c8d">allowed calls left no verifiable receipt</td></tr>
-            <tr><td class="id">C9</td><td class="name" data-i18n="c9n">description integrity</td><td data-i18n="c9d">a tool definition changed after approval</td></tr>
-          </tbody>
-        </table>
+        <div class="checks">
+          <div class="check"><div class="id">C1</div><div class="n" data-i18n="c1n">default-deny</div><div class="d" data-i18n="c1d">an unset allowlist means "allow everything"</div></div>
+          <div class="check"><div class="id">C2</div><div class="n" data-i18n="c2n">list/call parity</div><div class="d" data-i18n="c2d">a tool hidden from tools/list is still callable by name</div></div>
+          <div class="check"><div class="id">C3</div><div class="n" data-i18n="c3n">narrowing only</div><div class="d" data-i18n="c3d">a request widens a client's grant</div></div>
+          <div class="check"><div class="id">C4</div><div class="n" data-i18n="c4n">credential separation</div><div class="d" data-i18n="c4d">the client token is replayed upstream</div></div>
+          <div class="check"><div class="id">C5</div><div class="n" data-i18n="c5n">fail closed</div><div class="d" data-i18n="c5d">a call is allowed because the check errored</div></div>
+          <div class="check"><div class="id">C6</div><div class="n" data-i18n="c6n">enforcement parity</div><div class="d" data-i18n="c6d">the policy denies it, the gateway allowed it</div></div>
+          <div class="check"><div class="id">C7</div><div class="n" data-i18n="c7n">shadow MCP</div><div class="d" data-i18n="c7d">a server is reachable outside the gateway</div></div>
+          <div class="check"><div class="id">C8</div><div class="n" data-i18n="c8n">receipt chain</div><div class="d" data-i18n="c8d">allowed calls left no verifiable receipt</div></div>
+          <div class="check"><div class="id">C9</div><div class="n" data-i18n="c9n">description integrity</div><div class="d" data-i18n="c9d">a tool definition changed after approval</div></div>
+        </div>
+      </section>
+
+      <section id="ci">
+        <h2 data-i18n="useTitle">Use it in CI</h2>
+        <div class="cols2">
+          <div class="steps">
+            <div class="step"><div class="n">1</div><div><div class="t" data-i18n="s1t">Emit a trace</div><div class="d" data-i18n="s1d">Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.</div></div></div>
+            <div class="step"><div class="n">2</div><div><div class="t" data-i18n="s2t">Write the policy</div><div class="d" data-i18n="s2d"><code>attest init</code> scaffolds one. Default deny, per-client allowlists, conditions on arguments.</div></div></div>
+            <div class="step"><div class="n">3</div><div><div class="t" data-i18n="s3t">Gate the build</div><div class="d" data-i18n="s3d">The action fails on critical or high findings, so "the policy is enforced" becomes something the pipeline proves.</div></div></div>
+            <div class="step"><div class="n">4</div><div><div class="t" data-i18n="s4t">Keep receipts</div><div class="d" data-i18n="s4d">Optional hash-chained, HMAC-signed receipts for every allowed call.</div></div></div>
+          </div>
+          <div class="code">
+            <pre>- uses: Balanov/mcp-attest@v0
+  with:
+    policy: .attest/policy.json
+    trace: .attest/trace.jsonl</pre>
+          </div>
+        </div>
       </section>
 
       <section id="why">
         <h2 data-i18n="whyTitle">Why it exists</h2>
         <div class="why">
-          <a class="card" href="https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/" target="_blank" rel="noopener">
+          <a class="card2" href="https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/" target="_blank" rel="noopener">
             <div class="src">agentgateway, own evaluation · October 2026</div>
             <p class="quote" data-i18n="why1">"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check."</p>
           </a>
-          <a class="card" href="https://pipelab.org/blog/state-of-mcp-security-2026/" target="_blank" rel="noopener">
+          <a class="card2" href="https://pipelab.org/blog/state-of-mcp-security-2026/" target="_blank" rel="noopener">
             <div class="src">State of MCP Security 2026</div>
             <p class="quote" data-i18n="why2">"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible."</p>
           </a>
-          <a class="card" href="https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF" target="_blank" rel="noopener">
+          <a class="card2" href="https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF" target="_blank" rel="noopener">
             <div class="src">CISA · MCP security design considerations</div>
             <p class="quote" data-i18n="why3">"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments."</p>
           </a>
-        </div>
-      </section>
-
-      <section id="use">
-        <h2 data-i18n="useTitle">Use it in CI</h2>
-        <div class="steps">
-          <div class="step"><div class="n">1</div><div><div class="t" data-i18n="s1t">Emit a trace</div><div class="d" data-i18n="s1d">Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.</div></div></div>
-          <div class="step"><div class="n">2</div><div><div class="t" data-i18n="s2t">Write the policy</div><div class="d" data-i18n="s2d"><code>attest init</code> scaffolds one. Default deny, per-client allowlists, conditions on arguments.</div></div></div>
-          <div class="step"><div class="n">3</div><div><div class="t" data-i18n="s3t">Gate the build</div><div class="d" data-i18n="s3d">The action fails on critical or high findings, so "the policy is enforced" becomes something the pipeline proves.</div></div></div>
         </div>
       </section>
 
@@ -351,10 +416,22 @@
 
       var dict = {
         en: {
+          navChecks: "Checks", navHow: "How it works", navCi: "CI",
+          star: "Star", fork: "Fork",
           kicker: "Open source · MIT · no dependencies",
-          tagline: "<b>Prove the policy enforces.</b> Your policy vs. your trace, checked offline.",
+          headline: "Prove that your MCP policy actually enforces.",
+          tagline: "Two files in — the policy you wrote and the trace of what really happened. Every place they disagree comes back as a finding.",
           copy: "Copy", copied: "Copied",
-          rulesTitle: "Nine checks", colRule: "Rule", colFails: "Fails when",
+          ctaGit: "GitHub", ctaPypi: "PyPI",
+          f1: "9 checks, C1–C9", f2: "0 runtime dependencies", f3: "Python 3.10+", f4: "No network, no telemetry",
+          cardTitle: "The enforcement gap", cardCmd: "attest check",
+          gapPolicy: "Policy says", gapGateway: "Gateway did", gapHarness: "mcp-attest",
+          howTitle: "How it works",
+          h1t: "POLICY", h1d: "The rules you wrote, as one JSON file: allow, deny, conditions, defaults.",
+          h2t: "TRACE", h2d: "What the gateway actually decided, recorded as newline-delimited JSON.",
+          h3t: "REPLAY", h3d: "Every recorded call is re-evaluated locally, with the same arguments.",
+          h4t: "FINDINGS", h4d: "Evidence, a blocking exit code, and an optional hash-chained receipt trail.",
+          rulesTitle: "Nine checks",
           c1n: "default-deny", c1d: "an unset allowlist means \"allow everything\"",
           c2n: "list/call parity", c2d: "a tool hidden from tools/list is still callable by name",
           c3n: "narrowing only", c3d: "a request widens a client's grant",
@@ -364,22 +441,35 @@
           c7n: "shadow MCP", c7d: "a server is reachable outside the gateway",
           c8n: "receipt chain", c8d: "allowed calls left no verifiable receipt",
           c9n: "description integrity", c9d: "a tool definition changed after approval",
-          whyTitle: "Why it exists",
-          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
-          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
-          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
           useTitle: "Use it in CI",
           s1t: "Emit a trace", s1d: "Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.",
           s2t: "Write the policy", s2d: "attest init scaffolds one. Default deny, per-client allowlists, conditions on arguments.",
           s3t: "Gate the build", s3d: "The action fails on critical or high findings, so \"the policy is enforced\" becomes something the pipeline proves.",
+          s4t: "Keep receipts", s4d: "Optional hash-chained, HMAC-signed receipts for every allowed call.",
+          whyTitle: "Why it exists",
+          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
+          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
+          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
           sp1: "checks", sp2: "dependencies", sp3: "trace format",
           citeTitle: "Cite this work — BibTeX", footReleases: "Releases"
         },
         ru: {
+          navChecks: "Проверки", navHow: "Как работает", navCi: "CI",
+          star: "Звёзды", fork: "Форки",
           kicker: "Открытый код · MIT · без зависимостей",
-          tagline: "<b>Докажи, что политика работает.</b> Твоя политика против твоего трейса, проверка офлайн.",
-          copy: "Copy", copied: "Copied",
-          rulesTitle: "Девять проверок", colRule: "Правило", colFails: "Срабатывает, когда",
+          headline: "Докажи, что политика MCP действительно применяется.",
+          tagline: "Два файла на входе — политика, которую ты написал, и журнал того, что произошло на самом деле. Каждое расхождение возвращается находкой.",
+          copy: "Copy", copied: "Скопировано",
+          ctaGit: "GitHub", ctaPypi: "PyPI",
+          f1: "9 проверок, C1–C9", f2: "0 зависимостей", f3: "Python 3.10+", f4: "Без сети и телеметрии",
+          cardTitle: "Разрыв enforcement", cardCmd: "attest check",
+          gapPolicy: "Политика", gapGateway: "Шлюз сделал", gapHarness: "mcp-attest",
+          howTitle: "Как это работает",
+          h1t: "ПОЛИТИКА", h1d: "Правила, которые ты написал, — один JSON-файл: allow, deny, условия, умолчания.",
+          h2t: "ЖУРНАЛ", h2d: "Что шлюз решил на самом деле, записанное как JSON по одной строке.",
+          h3t: "ПЕРЕИГРОВКА", h3d: "Каждый записанный вызов пересчитывается локально, с теми же аргументами.",
+          h4t: "НАХОДКИ", h4d: "Улики, блокирующий код возврата и опциональная хеш-цепочка квитанций.",
+          rulesTitle: "Девять проверок",
           c1n: "default-deny", c1d: "незаданный allowlist означает «разрешено всё»",
           c2n: "list/call parity", c2d: "инструмент скрыт из tools/list, но вызывается по имени",
           c3n: "narrowing only", c3d: "запрос расширяет права клиента",
@@ -389,14 +479,15 @@
           c7n: "shadow MCP", c7d: "сервер доступен в обход шлюза",
           c8n: "receipt chain", c8d: "у разрешённых вызовов нет проверяемой квитанции",
           c9n: "description integrity", c9d: "описание инструмента изменилось после одобрения",
-          whyTitle: "Зачем это нужно",
-          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
-          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
-          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
           useTitle: "Использование в CI",
           s1t: "Сними трейс", s1d: "Newline-delimited JSON из любого прокси, харнесса или шага пайплайна. Глубоко ничего инструментировать не надо.",
           s2t: "Опиши политику", s2d: "attest init создаёт шаблон. Default deny, allowlist на клиента, условия по аргументам.",
           s3t: "Закрой сборку", s3d: "Action падает на critical и high — «политика работает» становится тем, что доказывает пайплайн.",
+          s4t: "Сохрани квитанции", s4d: "Опциональная хеш-цепочка с подписью HMAC для каждого разрешённого вызова.",
+          whyTitle: "Зачем это нужно",
+          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
+          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
+          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
           sp1: "проверок", sp2: "зависимостей", sp3: "формат трейса",
           citeTitle: "Цитирование — BibTeX", footReleases: "Релизы"
         }
@@ -482,8 +573,6 @@
         { cls: "crit", text: "!! [CRITICAL] C6 Policy denies 'shell__exec' but the gateway allowed it\n" },
         { cls: "dim", text: "          policy says deny (tool is on the deny list); the trace records allow.\n" },
         { cls: "dim", text: "          this is the 'accepted but not enforced' failure mode.\n" },
-        { cls: "crit", text: "!! [CRITICAL] C5 Call allowed after a failed policy evaluation\n" },
-        { cls: "dim", text: "          reason: 'policy error while evaluating rule set' — fail closed.\n" },
         { cls: "crit", text: "!! [CRITICAL] C9 Tool 'fs__read_file' changed after it was listed\n" },
         { cls: "warn", text: "!  [HIGH    ] C7 Client 'claude-code' reaches 'shell' outside the control point\n" },
         { cls: "ok", text: "\nsummary: critical=7, high=6\n" },
