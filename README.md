@@ -5,6 +5,9 @@
 [![Python](https://img.shields.io/pypi/pyversions/mcp-attest.svg)](https://pypi.org/project/mcp-attest/)
 [![License](https://img.shields.io/pypi/l/mcp-attest.svg)](LICENSE)
 
+**Product page: [balanov.pro/mcp-attest](https://balanov.pro/mcp-attest/)** —
+one-page overview, install and live examples.
+
 **Prove that your MCP policy actually enforces.**
 
 `mcp-attest` is a conformance and attestation harness for agent access control.

@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-11-13
+
+### Changed
+
+- The PyPI project page now points to the product page
+  `https://balanov.pro/mcp-attest/` as `Homepage` and `Documentation`, so the
+  package index leads to the landing page instead of the repository.
+- The README links to the product page directly from the header.
+
 ## [0.1.1] - 2026-11-13
 
 ### Added
