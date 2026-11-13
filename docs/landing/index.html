@@ -161,6 +161,10 @@
     .flow .n { font: 500 11.5px var(--mono); letter-spacing: 0.16em; color: var(--faint); }
     .flow .t { font: 600 16px var(--mono); color: var(--ink); margin-top: 10px; }
     .flow .d { font-size: 14.5px; color: var(--muted); margin-top: 8px; }
+    .also { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px 18px; margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
+    .also .t { font: 500 11.5px var(--mono); letter-spacing: 0.16em; color: var(--faint); }
+    .also code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-size: 13px; color: var(--ink); }
+    .also .d { font-size: 14.5px; color: var(--muted); }
 
     .checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
     .check { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
@@ -233,7 +237,7 @@
       <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
         <span>MCP-ATTEST</span>
-        <span class="ver">1.0.0</span>
+        <span class="ver">1.1.0</span>
       </a>
       <div class="top-right">
         <nav class="nav">
@@ -309,6 +313,11 @@
           <div class="item"><div class="n">02</div><div class="t" data-i18n="h2t">CONNECT</div><div class="d" data-i18n="h2d">One session per identity over stdio or Streamable HTTP. JSON-RPC spoken directly, no SDK.</div></div>
           <div class="item"><div class="n">03</div><div class="t" data-i18n="h3t">CALL</div><div class="d" data-i18n="h3d">Every identity against every tool, with arguments derived from the tool's own schema.</div></div>
           <div class="item"><div class="n">04</div><div class="t" data-i18n="h4t">FINDINGS</div><div class="d" data-i18n="h4d">A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.</div></div>
+        </div>
+        <div class="also">
+          <span class="t" data-i18n="alsoT">ALREADY EXPORTING OTEL?</span>
+          <code>attest check --policy policy.json --otlp export.json</code>
+          <span class="d" data-i18n="alsoD">The same policy, applied to the OpenTelemetry export you already produce.</span>
         </div>
       </section>
 
@@ -441,6 +450,8 @@
           h2t: "CONNECT", h2d: "One session per identity over stdio or Streamable HTTP. JSON-RPC spoken directly, no SDK.",
           h3t: "CALL", h3d: "Every identity against every tool, with arguments derived from the tool's own schema.",
           h4t: "FINDINGS", h4d: "A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.",
+          alsoT: "ALREADY EXPORTING OTEL?",
+          alsoD: "The same policy, applied to the OpenTelemetry export you already produce.",
           rulesTitle: "Twelve rules",
           r1n: "policy per identity", r1d: "the server allows what your policy denies",
           r2n: "cross-user objects", r2d: "a valid id belonging to another principal",
@@ -484,6 +495,8 @@
           h2t: "ПОДКЛЮЧЕНИЕ", h2d: "По сессии на личность, stdio или Streamable HTTP. JSON-RPC говорим сами, без SDK.",
           h3t: "ВЫЗОВЫ", h3d: "Каждая личность против каждого инструмента, аргументы берутся из его же схемы.",
           h4t: "НАХОДКИ", h4d: "Блокирующий код возврата, SARIF для code scanning и хеш-цепочка доказательств.",
+          alsoT: "УЖЕ ОТДАЁШЬ В OTEL?",
+          alsoD: "Та же политика, применённая к выгрузке OpenTelemetry, которую ты уже отдаёшь.",
           rulesTitle: "Двенадцать правил",
           r1n: "политика на личность", r1d: "сервер разрешает то, что политика запрещает",
           r2n: "чужие объекты", r2d: "валидный идентификатор другого принципала",
