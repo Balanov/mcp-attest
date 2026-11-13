@@ -6,6 +6,15 @@
 
 - Nothing yet: the next release starts from the 1.1.0 line.
 
+## [1.1.1] - 2026-11-14
+
+### Fixed
+
+- The source distribution shipped the test suite without its fixtures and
+  without the example servers, so `python -m unittest discover -s tests` on an
+  unpacked sdist failed. `MANIFEST.in` now ships `tests/` and `examples/`, and
+  the sdist runs its own tests.
+
 ## [1.1.0] - 2026-11-14
 
 The OTLP reader contributed in #3 now works from the command line. A team that
