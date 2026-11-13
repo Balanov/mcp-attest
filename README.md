@@ -38,12 +38,18 @@ It is not a gateway. It does not sit on the request path, and it never holds a c
 - **Zero dependencies.** Python 3.10+ and the standard library.
 - **Tamper-evident receipts.** Optional hash-chained, HMAC-signed receipts for every allowed call.
 
+## Where this sits
+
+Recorded MCP sessions are already judged by other tools: [agent-strace](https://pypi.org/project/agent-strace/) audits a session against a policy file, [mcpsnoop](https://github.com/kerlenton/mcpsnoop) gates CI on captured sessions, [mcp-conformance](https://github.com/tomtom215/mcp-conformance) checks the specification, [mcp-traceguard](https://github.com/tiempo0206/mcp-traceguard) compares against an approved baseline, [assay](https://crates.io/crates/assay-policy) enforces at runtime and packages evidence, [snulbug](https://pypi.org/project/snulbug/) learns policy from traffic.
+
+The honest summary: this is not a better version of them. It is smaller and narrower — one offline question, zero dependencies, no proxy, no SDK, no server — and it answers it in under a second on a committed trace. [Full comparison, sources and the claims we cannot make](docs/POSITIONING.md).
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="mcp-attest flow: the policy and the trace are replayed locally and compared, producing findings, an exit code and a receipt chain" width="100%">
   <p><sub>Nothing is proxied. The trace is the evidence. <a href="SPEC.md">Full specification</a>.</sub>
 </div>
 
-**[Website](https://balanov.pro/mcp-attest/) · [Specification](SPEC.md) · [Research notes](docs/RESEARCH.md) · [MIT license](LICENSE)**
+**[Website](https://balanov.pro/mcp-attest/) · [Specification](SPEC.md) · [Positioning](docs/POSITIONING.md) · [Research notes](docs/RESEARCH.md) · [MIT license](LICENSE)**
 
 ## Install
 

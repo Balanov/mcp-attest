@@ -38,12 +38,18 @@
 - **Ноль зависимостей.** Python 3.10+ и стандартная библиотека.
 - **Квитанции, которые не подделать.** Необязательная хеш-цепочка с подписью HMAC для каждого разрешённого вызова.
 
+## Где мы находимся
+
+Записанные MCP-сессии уже разбирают другие инструменты: [agent-strace](https://pypi.org/project/agent-strace/) сверяет сессию с файлом политики, [mcpsnoop](https://github.com/kerlenton/mcpsnoop) валит CI по записанным сессиям, [mcp-conformance](https://github.com/tomtom215/mcp-conformance) проверяет соответствие спецификации, [mcp-traceguard](https://github.com/tiempo0206/mcp-traceguard) сравнивает с базой одобренного, [assay](https://crates.io/crates/assay-policy) enforcement-ит в рантайме и пакует evidence, [snulbug](https://pypi.org/project/snulbug/) выучивает политику из трафика.
+
+Честно: это не более лучшая версия их. Это меньше и уже — один офлайн-вопрос, ноль зависимостей, без прокси, без SDK, без сервера, — и он закрывается меньше чем за секунду на закоммиченном трейсе. [Полное сравнение, источники и заявления, которые мы делать не можем](docs/POSITIONING.md).
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="Поток mcp-attest: политика и журнал переигрываются локально и сравниваются, на выходе — находки, код возврата и цепочка квитанций" width="100%">
   <p><sub>Ничего не проксируется. Улика — это журнал. <a href="SPEC.md">Полная спецификация</a>.</sub>
 </div>
 
-**[Сайт](https://balanov.pro/mcp-attest/) · [Спецификация](SPEC.md) · [Исследование](docs/RESEARCH.md) · [MIT](LICENSE)**
+**[Сайт](https://balanov.pro/mcp-attest/) · [Спецификация](SPEC.md) · [Позиционирование](docs/POSITIONING.md) · [Исследование](docs/RESEARCH.md) · [MIT](LICENSE)**
 
 ## Установка
 
