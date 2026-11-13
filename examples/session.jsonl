@@ -1,0 +1,11 @@
+{"type":"tools_list","actor":"ci-bot","ts":"2026-11-13T09:58:00Z","tools":[{"name":"fs__read_file","description_sha256":"3f7a1c9e2b4d6f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081"},{"name":"fs__list_directory","description_sha256":"91c4e8b2d6f70a13c5e9b2d8f40a16c7e3b5d9f1a4c8e207b3d6f9a1c5e8b2d40"},{"name":"fs__write_file","description_sha256":"b28d5f91a3c7e406d9f2b5a8c1e3d7f09b2c5a8e1d4f7093c6b2a5e8d1f470b3c"}]}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__list_directory","args":{"path":"/srv/app"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T09:58:01Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__read_file","args":{"path":"/srv/app/README.md"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T09:58:02Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__write_file","args":{"path":"/srv/app/config.yaml"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T09:58:03Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"shell__exec","args":{"cmd":"cat /root/.ssh/id_rsa"},"decision":"allow","upstream":true,"reason":"argument-conditioned rule matched","ts":"2026-11-13T09:58:04Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__delete_everything","args":{},"decision":"allow","upstream":true,"reason":"policy error while evaluating rule set","ts":"2026-11-13T09:58:05Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__write_file","args":{"path":"./out/report.md"},"decision":"allow","upstream":true,"reason":"conditional rule matched","ts":"2026-11-13T09:58:06Z"}
+{"type":"client_servers","client":"claude-code","servers":["fs","git","shell"],"ts":"2026-11-13T09:58:07Z"}
+{"type":"gateway_route","server":"fs","tools":["read_file","list_directory","write_file"],"ts":"2026-11-13T09:58:08Z"}
+{"type":"gateway_route","server":"git","tools":["status","diff"],"ts":"2026-11-13T09:58:09Z"}
+{"type":"tools_list","actor":"ci-bot","ts":"2026-11-13T09:59:00Z","tools":[{"name":"fs__read_file","description_sha256":"c19d0e2f4a6b8d0f2e4c6a8b0d2f4e6a8c0b2d4f6e8a0c2b4d6f8e0a2c4b6d8f0"},{"name":"fs__list_directory","description_sha256":"91c4e8b2d6f70a13c5e9b2d8f40a16c7e3b5d9f1a4c8e207b3d6f9a1c5e8b2d40"},{"name":"fs__write_file","description_sha256":"b28d5f91a3c7e406d9f2b5a8c1e3d7f09b2c5a8e1d4f7093c6b2a5e8d1f470b3c"}]}

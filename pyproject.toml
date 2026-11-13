@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-attest"
+version = "0.1.0"
+description = "Conformance and attestation harness for MCP agent access control: prove that a policy actually enforces, detect shadow MCP paths, and emit tamper-evident receipts."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Balanov.PRO" }]
+keywords = ["mcp", "model-context-protocol", "security", "policy", "audit", "attestation", "agents"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Balanov/mcp-attest"
+Source = "https://github.com/Balanov/mcp-attest"
+Issues = "https://github.com/Balanov/mcp-attest/issues"
+
+[project.scripts]
+attest = "mcp_attest.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

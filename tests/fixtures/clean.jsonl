@@ -1,0 +1,5 @@
+{"type":"tools_list","actor":"ci-bot","ts":"2026-11-13T10:00:00Z","tools":[{"name":"fs__read_file","description_sha256":"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"},{"name":"fs__list_directory","description_sha256":"b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3"}]}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__read_file","args":{"path":"/srv/README.md"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T10:00:01Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__list_directory","args":{"path":"/srv"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T10:00:02Z"}
+{"type":"client_servers","client":"claude-code","servers":["fs"],"ts":"2026-11-13T10:00:03Z"}
+{"type":"gateway_route","server":"fs","tools":["read_file","list_directory"],"ts":"2026-11-13T10:00:04Z"}

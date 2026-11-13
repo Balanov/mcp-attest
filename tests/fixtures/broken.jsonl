@@ -1,0 +1,8 @@
+{"type":"tools_list","actor":"ci-bot","ts":"2026-11-13T10:00:00Z","tools":[{"name":"fs__read_file","description_sha256":"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"},{"name":"fs__list_directory","description_sha256":"b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3"}]}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__read_file","args":{"path":"/srv/README.md"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T10:00:01Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__write_file","args":{"path":"/etc/hosts"},"decision":"allow","upstream":true,"reason":"tool is on the allow list","ts":"2026-11-13T10:00:02Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__delete_everything","args":{},"decision":"deny","upstream":false,"reason":"tool is on the deny list","ts":"2026-11-13T10:00:03Z"}
+{"type":"tool_call","actor":"ci-bot","tool":"fs__write_file","args":{"path":"/srv/out/report.txt"},"decision":"allow","upstream":true,"reason":"policy error while evaluating condition","ts":"2026-11-13T10:00:04Z"}
+{"type":"client_servers","client":"claude-code","servers":["fs","git"],"ts":"2026-11-13T10:00:05Z"}
+{"type":"gateway_route","server":"fs","tools":["read_file","list_directory"],"ts":"2026-11-13T10:00:06Z"}
+{"type":"tools_list","actor":"ci-bot","ts":"2026-11-13T10:05:00Z","tools":[{"name":"fs__read_file","description_sha256":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},{"name":"fs__list_directory","description_sha256":"b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3"}]}

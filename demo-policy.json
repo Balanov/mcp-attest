@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "default_decision": "deny",
+  "clients": {
+    "ci-bot": {
+      "tools": {
+        "allow": [
+          "fs__read_file",
+          "fs__list_directory"
+        ],
+        "deny": [
+          "fs__write_file",
+          "fs__delete_everything"
+        ],
+        "conditional": [
+          {
+            "tool": "fs__write_file",
+            "allow_when": {
+              "path": "./out/"
+            },
+            "action": "allow",
+            "reason": "writes are allowed only inside ./out/"
+          }
+        ]
+      },
+      "egress_hosts": [
+        "api.internal.example.com"
+      ]
+    }
+  },
+  "gateway": {
+    "mode": "routed",
+    "fail_closed": true,
+    "passthrough_credentials": false
+  },
+  "receipts": {
+    "required": true,
+    "key_env": "MCP_ATTEST_KEY"
+  }
+}

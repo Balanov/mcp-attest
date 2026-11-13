@@ -1,0 +1,33 @@
+name: "mcp-attest"
+description: "Fail the build when an MCP agent policy is not actually enforced."
+author: "Balanov.PRO"
+
+inputs:
+  policy:
+    description: "Path to the policy JSON file"
+    required: true
+    default: ".attest/policy.json"
+  trace:
+    description: "Path to the newline-delimited JSON trace"
+    required: true
+    default: ".attest/trace.jsonl"
+  strict:
+    description: "Treat medium findings as failures too"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install mcp-attest
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install mcp-attest
+
+    - name: Check the trace against the policy
+      shell: bash
+      run: |
+        args=(check --policy "${{ inputs.policy }}" --trace "${{ inputs.trace }}" --json)
+        if [ "${{ inputs.strict }}" = "true" ]; then args+=(--strict); fi
+        attest "${args[@]}"
