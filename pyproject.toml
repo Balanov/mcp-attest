@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-attest"
-version = "0.1.2"
+version = "0.1.3"
 description = "Conformance and attestation harness for MCP agent access control: prove that a policy actually enforces, detect shadow MCP paths, and emit tamper-evident receipts."
 readme = "README.md"
 requires-python = ">=3.10"
