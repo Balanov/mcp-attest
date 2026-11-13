@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/readme/hero.png" alt="MCP-ATTEST — the conformance harness for MCP agent access control. Policy says deny, the gateway allowed it: nine checks replay your trace against your own rules." width="100%">
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — the conformance harness for MCP agent access control. Policy says deny, the gateway allowed it: nine checks replay your trace against your own rules." width="100%">
   <p><strong>Prove that your MCP policy actually enforces.</strong></p>
   <p>Two input files · nine checks · zero runtime dependencies · MIT</p>
   <p>
@@ -21,7 +21,7 @@
 </div>
 
 <div align="center">
-  <img src="docs/readme/demo.gif" alt="mcp-attest check output on a recorded trace: C6 policy denied the call but the gateway allowed it, C9 tool definition changed after approval, summary critical=7 high=6" width="100%">
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/demo.gif" alt="mcp-attest check output on a recorded trace: C6 policy denied the call but the gateway allowed it, C9 tool definition changed after approval, summary critical=7 high=6" width="100%">
   <p><sub>Real output from <code>examples/session.jsonl</code>. Exit code 1 means a blocking finding. <a href="examples/">Examples</a> · <a href="docs/RESEARCH.md">Why this exists</a>.</sub>
 </div>
 
@@ -39,7 +39,7 @@ It is not a gateway. It does not sit on the request path, and it never holds a c
 - **Tamper-evident receipts.** Optional hash-chained, HMAC-signed receipts for every allowed call.
 
 <div align="center">
-  <img src="docs/readme/architecture.png" alt="mcp-attest flow: the policy and the trace are replayed locally and compared, producing findings, an exit code and a receipt chain" width="100%">
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="mcp-attest flow: the policy and the trace are replayed locally and compared, producing findings, an exit code and a receipt chain" width="100%">
   <p><sub>Nothing is proxied. The trace is the evidence. <a href="SPEC.md">Full specification</a>.</sub>
 </div>
 
