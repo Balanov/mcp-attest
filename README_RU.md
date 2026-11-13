@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/readme/hero.png" alt="MCP-ATTEST — инструмент проверки соответствия для контроля доступа агентов MCP. Политика запрещает, шлюз разрешил: девять проверок переигрывают ваш журнал по вашим же правилам." width="100%">
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/hero.png" alt="MCP-ATTEST — инструмент проверки соответствия для контроля доступа агентов MCP. Политика запрещает, шлюз разрешил: девять проверок переигрывают ваш журнал по вашим же правилам." width="100%">
   <p><strong>Докажите, что ваша политика MCP действительно применяется.</strong></p>
   <p>Два входных файла · девять проверок · ноль зависимостей · MIT</p>
   <p>
@@ -21,7 +21,7 @@
 </div>
 
 <div align="center">
-  <img src="docs/readme/demo.gif" alt="Вывод mcp-attest check на записанном журнале: C6 — политика запретила вызов, а шлюз разрешил; C9 — описание инструмента изменилось после одобрения; summary critical=7 high=6" width="100%">
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/demo.gif" alt="Вывод mcp-attest check на записанном журнале: C6 — политика запретила вызов, а шлюз разрешил; C9 — описание инструмента изменилось после одобрения; summary critical=7 high=6" width="100%">
   <p><sub>Реальный вывод на <code>examples/session.jsonl</code>. Код возврата 1 означает блокирующую находку. <a href="examples/">Примеры</a> · <a href="docs/RESEARCH.md">Почему это нужно</a>.</sub>
 </div>
 
@@ -39,7 +39,7 @@
 - **Квитанции, которые не подделать.** Необязательная хеш-цепочка с подписью HMAC для каждого разрешённого вызова.
 
 <div align="center">
-  <img src="docs/readme/architecture.png" alt="Поток mcp-attest: политика и журнал переигрываются локально и сравниваются, на выходе — находки, код возврата и цепочка квитанций" width="100%">
+  <img src="https://raw.githubusercontent.com/Balanov/mcp-attest/main/docs/readme/architecture.png" alt="Поток mcp-attest: политика и журнал переигрываются локально и сравниваются, на выходе — находки, код возврата и цепочка квитанций" width="100%">
   <p><sub>Ничего не проксируется. Улика — это журнал. <a href="SPEC.md">Полная спецификация</a>.</sub>
 </div>
 

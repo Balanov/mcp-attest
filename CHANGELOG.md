@@ -4,13 +4,20 @@
 
 ### Added
 
-- Nothing yet: the next release starts from the 0.1.3 line.
+- Nothing yet: the next release starts from the 0.1.4 line.
 
 
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.4] - 2026-11-13
+
+### Changed
+
+- The readme visuals now use absolute URLs, so they render on the PyPI project
+  page as well as on GitHub.
 
 ## [0.1.3] - 2026-11-13
 
