@@ -12,6 +12,7 @@ from .checks import RULES, Finding, run_checks, summarize
 from .policy import STARTER_POLICY, PolicyError, load_policy
 from .receipts import build_receipts, key_from_env, verify_receipts
 from .shadow import find_shadow_paths
+from .otlp import load_otlp
 from .trace import load_trace, write_trace
 
 SEVERITY_BADGE = {
@@ -37,6 +38,15 @@ def _print_findings(findings: list[Finding], as_json: bool) -> None:
         print()
 
 
+def _load_trace(args: argparse.Namespace):
+    """Load a trace from a JSONL file or from an OTLP export."""
+    if getattr(args, "otlp", None):
+        return load_otlp(args.otlp)
+    if not getattr(args, "trace", None):
+        raise OSError("one of --trace or --otlp is required")
+    return load_trace(args.trace)
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if out.exists() and not args.force:
@@ -55,7 +65,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"policy error: {exc}", file=sys.stderr)
         return 2
     try:
-        trace = load_trace(args.trace)
+        trace = _load_trace(args)
     except OSError as exc:
         print(f"trace error: {exc}", file=sys.stderr)
         return 2
@@ -81,7 +91,7 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 def cmd_receipts(args: argparse.Namespace) -> int:
     try:
-        trace = load_trace(args.trace)
+        trace = _load_trace(args)
     except OSError as exc:
         print(f"trace error: {exc}", file=sys.stderr)
         return 2
@@ -107,7 +117,7 @@ def cmd_receipts(args: argparse.Namespace) -> int:
 
 def cmd_shadow(args: argparse.Namespace) -> int:
     try:
-        trace = load_trace(args.trace)
+        trace = _load_trace(args)
     except OSError as exc:
         print(f"trace error: {exc}", file=sys.stderr)
         return 2
@@ -146,19 +156,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_check = sub.add_parser("check", help="check a trace against a policy")
     p_check.add_argument("--policy", required=True)
-    p_check.add_argument("--trace", required=True)
+    p_check.add_argument("--trace")
+    p_check.add_argument("--otlp", help="read the trace from an OTLP export instead of a JSONL file")
     p_check.add_argument("--json", action="store_true")
     p_check.add_argument("--strict", action="store_true", help="treat medium findings as failures")
     p_check.set_defaults(func=cmd_check)
 
     p_receipts = sub.add_parser("receipts", help="build and verify a hash-chained receipt trail")
-    p_receipts.add_argument("--trace", required=True)
+    p_receipts.add_argument("--trace")
+    p_receipts.add_argument("--otlp", help="read the trace from an OTLP export instead of a JSONL file")
     p_receipts.add_argument("--out")
     p_receipts.add_argument("--key-env", default="MCP_ATTEST_KEY")
     p_receipts.set_defaults(func=cmd_receipts)
 
     p_shadow = sub.add_parser("shadow", help="list paths that bypass the control point")
-    p_shadow.add_argument("--trace", required=True)
+    p_shadow.add_argument("--trace")
+    p_shadow.add_argument("--otlp", help="read the trace from an OTLP export instead of a JSONL file")
     p_shadow.add_argument("--json", action="store_true")
     p_shadow.set_defaults(func=cmd_shadow)
 

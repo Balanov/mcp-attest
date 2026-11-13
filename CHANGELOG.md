@@ -4,7 +4,11 @@
 
 ### Added
 
-- Initial public release: nine conformance checks, hash-chained receipts, shadow-path detection and the CI action.
+- `attest check --otlp <file>` reads an OpenTelemetry export directly. MCP spans
+  (`mcp.tool.call`, `mcp.tools.list`, `mcp.client.servers`, `mcp.gateway.route`)
+  are mapped to trace events; spans that describe anything else are skipped and
+  reported. A team that already runs OTel no longer needs a second
+  instrumentation path to prove what its agent was allowed to do.
 
 
 All notable changes to this project are documented in this file.
