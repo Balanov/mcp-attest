@@ -115,6 +115,23 @@ Exit code `1` means a blocking finding exists. `--json` prints machine-readable 
 | `attest shadow` | List the servers an agent can reach outside the gateway |
 | `attest rules` | List the enforced rules |
 
+### Check an export you already have
+
+If your agent already emits OpenTelemetry spans, `attest check` reads the export directly. You do not need a second instrumentation path to prove what your agent was allowed to do:
+
+```bash
+attest check --policy policy.json --otlp otel-export.json
+```
+
+The reader takes a single OTLP JSON payload or newline-delimited payloads, and skips everything that is not an MCP span with a warning. It understands four span names:
+
+| Span | Attributes | Meaning |
+|---|---|---|
+| `mcp.tool.call` | `mcp.actor`, `mcp.tool.name`, `mcp.tool.arguments`, `mcp.policy.decision`, `mcp.policy.reason` | one tool invocation and the decision it received |
+| `mcp.tools.list` | `mcp.actor`, `mcp.tools` | the tool list an actor received |
+| `mcp.client.servers` | `mcp.actor`, `mcp.servers` | the servers a client is configured with |
+| `mcp.gateway.route` | `mcp.server`, `mcp.tools` | the tools a gateway routes for a server |
+
 ## The rules
 
 Live rules run against a server you point it at. Each maps to a test in the OWASP MCP Security Testing Guide.

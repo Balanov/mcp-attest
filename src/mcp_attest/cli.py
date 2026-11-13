@@ -12,6 +12,7 @@ from .checks import RULES as TRACE_RULES
 from .checks import Finding, run_checks, summarize
 from .conformance import ConformanceResult, RunOptions, manifest_hash, run_conformance
 from .evidence import bundle_to_dict, build_bundle, key_from_env, verify_bundle
+from .otlp import load_otlp
 from .policy import STARTER_POLICY, PolicyError, load_policy
 from .receipts import build_receipts, verify_receipts
 from .report import print_findings, print_result, result_payload, write_sarif
@@ -225,7 +226,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"policy error: {exc}", file=sys.stderr)
         return 2
     try:
-        trace = load_trace(args.trace)
+        if args.otlp:
+            trace = load_otlp(args.otlp)
+        else:
+            trace = load_trace(args.trace)
     except OSError as exc:
         print(f"trace error: {exc}", file=sys.stderr)
         return 2
@@ -345,7 +349,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_check = sub.add_parser("check", help="check a trace against a policy")
     p_check.add_argument("--policy", required=True)
-    p_check.add_argument("--trace", required=True)
+    source = p_check.add_mutually_exclusive_group(required=True)
+    source.add_argument("--trace", help="newline-delimited JSON trace")
+    source.add_argument("--otlp", metavar="PATH", help="read the trace from an OpenTelemetry export")
     p_check.add_argument("--json", action="store_true")
     p_check.add_argument("--strict", action="store_true", help="treat medium findings as failures")
     p_check.set_defaults(func=cmd_check)

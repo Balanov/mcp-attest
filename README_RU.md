@@ -114,6 +114,23 @@ tested: 2 identities, 6 tools, 12 calls
 | `attest shadow` | Показать серверы, доступные агенту в обход шлюза |
 | `attest rules` | Показать список правил |
 
+### Разобрать выгрузку, которая у вас уже есть
+
+Если агент уже отдаёт спаны в OpenTelemetry, `attest check` читает выгрузку напрямую. Чтобы доказать, что было разрешено агенту, не нужно второго пути инструментации:
+
+```bash
+attest check --policy policy.json --otlp otel-export.json
+```
+
+Читалка принимает один OTLP JSON или выгрузку построчно, а всё, что не является MCP-спаном, пропускает с предупреждением. Она понимает четыре имени спанов:
+
+| Спан | Атрибуты | Смысл |
+|---|---|---|
+| `mcp.tool.call` | `mcp.actor`, `mcp.tool.name`, `mcp.tool.arguments`, `mcp.policy.decision`, `mcp.policy.reason` | один вызов инструмента и полученное решение |
+| `mcp.tools.list` | `mcp.actor`, `mcp.tools` | список инструментов, который получил актёр |
+| `mcp.client.servers` | `mcp.actor`, `mcp.servers` | серверы, с которыми настроен клиент |
+| `mcp.gateway.route` | `mcp.server`, `mcp.tools` | инструменты, которые шлюз маршрутизирует серверу |
+
 ## Правила
 
 Живые правила работают против сервера, на который вы их направили. Каждое отображается на тест из OWASP MCP Security Testing Guide.
