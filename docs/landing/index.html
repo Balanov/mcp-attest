@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP-ATTEST — prove the policy enforces</title>
+  <meta name="description" content="Conformance and attestation harness for MCP agent access control. Nine checks, offline, zero dependencies, MIT." />
+  <meta property="og:title" content="MCP-ATTEST — prove your MCP policy enforces" />
+  <meta property="og:description" content="Take the policy you wrote and the trace of what happened, and see every point where they disagree. Nine checks, offline, MIT." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://balanov.pro/mcp-attest/" />
+  <meta property="og:image" content="https://opengraph.githubassets.com/1/Balanov/mcp-attest" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e0f11'/%3E%3Cpath d='M32 12l16 8v10c0 10-6.7 18.6-16 22-9.3-3.4-16-12-16-22V20l16-8z' fill='none' stroke='%235fd399' stroke-width='4'/%3E%3Cpath d='M24 32l6 6 10-12' fill='none' stroke='%235fd399' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fafaf8;
+      --panel: #f2f1ed;
+      --ink: #1a1a1e;
+      --muted: #555c56;
+      --faint: #8a9089;
+      --line: #e4e2dc;
+      --accent: #14713f;
+      --accent-soft: #e3f0e8;
+      --track: #e9e7e1;
+      --bar-other: #b9beb8;
+      --btn-bg: #ffffff;
+      --mono: "IBM Plex Mono", Consolas, monospace;
+      --term-bg: #141619;
+      --term-ink: #eceeea;
+      --term-dim: #6b726d;
+      --term-green: #5fd399;
+      --term-red: #f28b82;
+      --term-amber: #e2b04a;
+      color-scheme: light;
+    }
+    [data-theme="dark"] {
+      --bg: #0e0f11;
+      --panel: #141619;
+      --ink: #eceeea;
+      --muted: #9ba19c;
+      --faint: #6b726d;
+      --line: #24282b;
+      --accent: #5fd399;
+      --accent-soft: #182a21;
+      --track: #1b1e21;
+      --bar-other: #3a4045;
+      --btn-bg: #1a1d20;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+      font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+      transition: background 200ms ease-out, color 200ms ease-out;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    ::selection { background: var(--accent-soft); }
+
+    header.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 9px; color: var(--ink); font: 600 15px var(--mono); letter-spacing: 0.12em; }
+    .brand:hover { text-decoration: none; }
+    .brand svg { width: 20px; height: 20px; }
+    .top-right { display: flex; align-items: center; gap: 10px; }
+    .gh-link { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 14px; min-height: 44px; transition: color 150ms; }
+    .gh-link:hover { color: var(--ink); text-decoration: none; }
+    .gh-link svg { width: 19px; height: 19px; }
+    .lang-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+    .lang-switch button {
+      appearance: none; border: 0; background: transparent; color: var(--faint);
+      font: 500 12px var(--mono); padding: 10px 12px; min-height: 40px; cursor: pointer; transition: color 150ms, background 150ms;
+    }
+    .lang-switch button:hover { color: var(--ink); }
+    .lang-switch button[aria-pressed="true"] { background: var(--line); color: var(--ink); }
+    .theme-toggle {
+      appearance: none; display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; min-height: 40px; border: 1px solid var(--line); border-radius: 7px;
+      background: transparent; color: var(--muted); cursor: pointer; transition: color 150ms, border-color 150ms;
+    }
+    .theme-toggle:hover { color: var(--ink); border-color: var(--faint); }
+    .theme-toggle svg { width: 17px; height: 17px; }
+    [data-theme="light"] .icon-moon { display: none; }
+    [data-theme="dark"] .icon-sun { display: none; }
+
+    .hero { padding: 48px 0 0; }
+    .kicker { font: 500 12px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 12px; }
+    h1 { font: 600 clamp(56px, 12vw, 122px)/1 var(--mono); letter-spacing: -0.04em; margin: 0 0 18px; }
+    .tagline { font-size: 19px; color: var(--muted); margin: 0 0 24px; font-weight: 400; }
+    .tagline b { color: var(--ink); font-weight: 500; }
+    .hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .install {
+      display: inline-flex; align-items: center; gap: 12px; max-width: 100%;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 6px 6px 6px 16px;
+    }
+    .install code { font: 400 13.5px var(--mono); color: var(--ink); overflow-x: auto; white-space: nowrap; padding: 8px 0; }
+    .install .dollar { color: var(--faint); user-select: none; }
+    .copy-btn {
+      appearance: none; border: 1px solid var(--line); background: var(--btn-bg); color: var(--muted);
+      border-radius: 6px; font: 500 12px var(--mono); padding: 8px 12px; min-height: 36px; cursor: pointer;
+      transition: color 150ms; flex-shrink: 0;
+    }
+    .copy-btn:hover { color: var(--ink); border-color: var(--faint); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+    .gh-stats { display: inline-flex; flex: none; overflow: hidden; background: var(--btn-bg); border: 1px solid var(--line); border-radius: 9px; }
+    .gh-stat { display: inline-flex; align-items: stretch; color: var(--ink); font: 500 12.5px var(--mono); min-height: 44px; transition: background 150ms; }
+    .gh-stat + .gh-stat { border-left: 1px solid var(--line); }
+    .gh-stat:hover { text-decoration: none; background: var(--panel); }
+    .gh-stat:focus-visible { outline-offset: -3px; }
+    .gh-stat .label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; }
+    .gh-stat .label svg { width: 14px; height: 14px; color: var(--muted); }
+    .gh-stat .count { display: inline-flex; align-items: center; padding: 8px 10px; border-left: 1px solid var(--line); color: var(--muted); background: var(--panel); min-width: 38px; justify-content: center; }
+    .gh-stat:hover .count { color: var(--accent); }
+
+    .terminal { margin: 24px 0 0; background: var(--term-bg); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .terminal-bar { display: flex; align-items: center; gap: 7px; padding: 13px 16px; border-bottom: 1px solid #24282b; }
+    .terminal-bar .dot { width: 10px; height: 10px; border-radius: 50%; background: #2b2f33; }
+    .terminal-bar .term-title { margin-left: auto; font: 400 11.5px var(--mono); color: var(--term-dim); }
+    .terminal-body { padding: 22px 22px 26px; font: 400 13.5px/1.8 var(--mono); min-height: 300px; white-space: pre-wrap; word-break: break-word; color: var(--term-ink); }
+    .terminal-body .prompt { color: var(--term-green); }
+    .terminal-body .dim { color: var(--term-dim); }
+    .terminal-body .ok { color: var(--term-green); }
+    .terminal-body .crit { color: var(--term-red); }
+    .terminal-body .warn { color: var(--term-amber); }
+    .cursor { display: inline-block; width: 8px; height: 16px; background: var(--term-green); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    section { padding: 48px 0 0; }
+    h2 { font: 500 13px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 26px; }
+    h2 a { color: var(--faint); }
+    h2 a:hover { color: var(--accent); }
+
+    .rules { width: 100%; border-collapse: collapse; font: 400 13.5px var(--mono); }
+    .rules th { text-align: left; font-weight: 500; color: var(--faint); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 14px 10px 0; border-bottom: 1px solid var(--line); }
+    .rules td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--muted); }
+    .rules td.id { color: var(--accent); white-space: nowrap; }
+    .rules td.name { color: var(--ink); white-space: nowrap; }
+    @media (max-width: 620px) {
+      .rules thead { display: none; }
+      .rules td { display: block; padding: 3px 0; border: 0; }
+      .rules tr { display: block; border-bottom: 1px solid var(--line); padding: 12px 0; }
+    }
+
+    .why { display: grid; gap: 12px; }
+    .why a.card {
+      display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 15px 18px; color: var(--ink);
+    }
+    .why a.card:hover { border-color: var(--faint); text-decoration: none; }
+    .why .src { font: 500 11.5px var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; }
+    .why .quote { margin: 7px 0 0; font-size: 15px; color: var(--muted); }
+
+    .spec-row { display: flex; flex-wrap: wrap; gap: 10px 26px; font: 400 13px var(--mono); color: var(--muted); padding: 4px 0 0; }
+    .spec-row b { color: var(--ink); font-weight: 500; }
+
+    .steps { counter-reset: step; display: grid; gap: 14px; }
+    .step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+    .step .n { font: 600 13px var(--mono); color: var(--accent); border: 1px solid var(--line); border-radius: 8px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+    .step .t { font: 500 14.5px var(--mono); color: var(--ink); }
+    .step .d { font-size: 14.5px; color: var(--muted); margin-top: 2px; }
+    .step code { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+
+    details.cite { margin-top: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    details.cite summary {
+      cursor: pointer; list-style: none; padding: 14px 18px; font: 500 13px var(--mono); color: var(--muted);
+      display: flex; justify-content: space-between; align-items: center; min-height: 48px; transition: color 150ms;
+    }
+    details.cite summary:hover { color: var(--ink); }
+    details.cite summary::-webkit-details-marker { display: none; }
+    details.cite summary .plus { color: var(--faint); transition: transform 200ms; }
+    details.cite[open] summary .plus { transform: rotate(45deg); }
+    .cite-body { position: relative; padding: 0 18px 18px; }
+    .cite-body pre { margin: 0; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 400 12.5px/1.7 var(--mono); overflow-x: auto; color: var(--muted); }
+    .cite-body .copy-btn { position: absolute; top: 22px; right: 26px; }
+
+    footer { margin-top: 52px; border-top: 1px solid var(--line); padding: 22px 0 34px; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; font: 400 12.5px var(--mono); color: var(--faint); }
+    footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+    footer a { color: var(--muted); display: inline-flex; align-items: center; min-height: 32px; }
+    footer a:hover { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .hero { padding-top: 32px; }
+      .terminal-body { font-size: 11.5px; min-height: 280px; padding: 16px; }
+      .install code { font-size: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cursor { animation: none; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
+        <span>MCP-ATTEST</span>
+      </a>
+      <div class="top-right">
+        <a class="gh-link" href="https://github.com/Balanov/mcp-attest">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53.49-2.69.49-.23 0-.81.08-1.35-.74-.65-1.24.52-1.31 0-1.05-.07-1.51.72-.03.25-.72.47-.73.66.02.6.42.6.42.42 1.17 1.1.84 1.37.84.4-.01.77-.28 1.19-.71.04-.08.16-.35.19-.49-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.66 7.66 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          GitHub
+        </a>
+        <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Switch theme / Переключить тему" title="Light / dark">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+        <div class="lang-switch" role="group" aria-label="Language / Язык">
+          <button type="button" id="lang-en" aria-pressed="true">EN</button>
+          <button type="button" id="lang-ru" aria-pressed="false">RU</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker">Open source · MIT · no dependencies</p>
+        <h1>MCP-ATTEST</h1>
+        <p class="tagline" data-i18n="tagline"><b>Prove the policy enforces.</b> Your policy vs. your trace, checked offline.</p>
+        <div class="hero-actions">
+          <div class="install">
+            <code><span class="dollar">$ </span>pipx install mcp-attest</code>
+            <button class="copy-btn" type="button" data-copy="install-cmd" data-i18n="copy">Copy</button>
+          </div>
+          <span id="install-cmd" hidden>pipx install mcp-attest</span>
+
+          <div class="gh-stats">
+            <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/stargazers" aria-label="Star MCP-ATTEST on GitHub">
+              <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>Star</span>
+              <span class="count" id="gh-stars">0</span>
+            </a>
+            <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/forks" aria-label="Fork MCP-ATTEST on GitHub">
+              <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg>Fork</span>
+              <span class="count" id="gh-forks">0</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="terminal" role="img" aria-label="Terminal demo: attest check reporting a policy that was accepted but never enforced, a fail-open call and a changed tool description">
+          <div class="terminal-bar" aria-hidden="true">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="term-title">sh — attest check</span>
+          </div>
+          <div class="terminal-body" id="terminal-body" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section id="rules">
+        <h2 data-i18n="rulesTitle">Nine checks</h2>
+        <table class="rules">
+          <thead><tr><th>ID</th><th data-i18n="colRule">Rule</th><th data-i18n="colFails">Fails when</th></tr></thead>
+          <tbody>
+            <tr><td class="id">C1</td><td class="name" data-i18n="c1n">default-deny</td><td data-i18n="c1d">an unset allowlist means "allow everything"</td></tr>
+            <tr><td class="id">C2</td><td class="name" data-i18n="c2n">list/call parity</td><td data-i18n="c2d">a tool hidden from tools/list is still callable by name</td></tr>
+            <tr><td class="id">C3</td><td class="name" data-i18n="c3n">narrowing only</td><td data-i18n="c3d">a request widens a client's grant</td></tr>
+            <tr><td class="id">C4</td><td class="name" data-i18n="c4n">credential separation</td><td data-i18n="c4d">the client token is replayed upstream</td></tr>
+            <tr><td class="id">C5</td><td class="name" data-i18n="c5n">fail closed</td><td data-i18n="c5d">a call is allowed because the check errored</td></tr>
+            <tr><td class="id">C6</td><td class="name" data-i18n="c6n">enforcement parity</td><td data-i18n="c6d">the policy denies it, the gateway allowed it</td></tr>
+            <tr><td class="id">C7</td><td class="name" data-i18n="c7n">shadow MCP</td><td data-i18n="c7d">a server is reachable outside the gateway</td></tr>
+            <tr><td class="id">C8</td><td class="name" data-i18n="c8n">receipt chain</td><td data-i18n="c8d">allowed calls left no verifiable receipt</td></tr>
+            <tr><td class="id">C9</td><td class="name" data-i18n="c9n">description integrity</td><td data-i18n="c9d">a tool definition changed after approval</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="why">
+        <h2 data-i18n="whyTitle">Why it exists</h2>
+        <div class="why">
+          <a class="card" href="https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/" target="_blank" rel="noopener">
+            <div class="src">agentgateway, own evaluation · October 2026</div>
+            <p class="quote" data-i18n="why1">"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check."</p>
+          </a>
+          <a class="card" href="https://pipelab.org/blog/state-of-mcp-security-2026/" target="_blank" rel="noopener">
+            <div class="src">State of MCP Security 2026</div>
+            <p class="quote" data-i18n="why2">"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible."</p>
+          </a>
+          <a class="card" href="https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF" target="_blank" rel="noopener">
+            <div class="src">CISA · MCP security design considerations</div>
+            <p class="quote" data-i18n="why3">"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments."</p>
+          </a>
+        </div>
+      </section>
+
+      <section id="use">
+        <h2 data-i18n="useTitle">Use it in CI</h2>
+        <div class="steps">
+          <div class="step"><div class="n">1</div><div><div class="t" data-i18n="s1t">Emit a trace</div><div class="d" data-i18n="s1d">Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.</div></div></div>
+          <div class="step"><div class="n">2</div><div><div class="t" data-i18n="s2t">Write the policy</div><div class="d" data-i18n="s2d"><code>attest init</code> scaffolds one. Default deny, per-client allowlists, conditions on arguments.</div></div></div>
+          <div class="step"><div class="n">3</div><div><div class="t" data-i18n="s3t">Gate the build</div><div class="d" data-i18n="s3d">The action fails on critical or high findings, so "the policy is enforced" becomes something the pipeline proves.</div></div></div>
+        </div>
+      </section>
+
+      <section id="specs">
+        <div class="spec-row">
+          <span><b>9</b> <span data-i18n="sp1">checks</span></span>
+          <span><b>0</b> <span data-i18n="sp2">dependencies</span></span>
+          <span><b>JSONL</b> <span data-i18n="sp3">trace format</span></span>
+          <span><b>Python 3.10+</b></span>
+          <span><b>MIT</b></span>
+        </div>
+      </section>
+
+      <section id="cite">
+        <details class="cite">
+          <summary><span data-i18n="citeTitle">Cite this work — BibTeX</span><span class="plus">+</span></summary>
+          <div class="cite-body">
+            <button class="copy-btn" type="button" data-copy="bibtex" data-i18n="copy">Copy</button>
+            <pre id="bibtex">@misc{balanov2026mcpattest,
+  title  = {MCP-ATTEST: Conformance and Attestation for MCP Agent Access Control},
+  author = {Balanov, Anton},
+  year   = {2026},
+  howpublished = {\url{https://github.com/Balanov/mcp-attest}},
+  url    = {https://balanov.pro/mcp-attest/}
+}</pre>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2026 Anton Balanov · MIT</span>
+      <nav>
+        <a href="https://github.com/Balanov/mcp-attest">GitHub</a>
+        <a href="https://github.com/Balanov/mcp-attest/releases" data-i18n="footReleases">Releases</a>
+        <a href="https://pypi.org/project/mcp-attest/">PyPI</a>
+        <a href="https://balanov.pro/">balanov.pro</a>
+      </nav>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        try { localStorage.setItem("mcp-attest-theme", theme); } catch (e) {}
+      }
+      var savedTheme = null;
+      try { savedTheme = localStorage.getItem("mcp-attest-theme"); } catch (e) {}
+      applyTheme(savedTheme === "dark" ? "dark" : "light");
+      document.getElementById("theme-toggle").addEventListener("click", function () {
+        var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        applyTheme(next);
+      });
+
+      var dict = {
+        en: {
+          kicker: "Open source · MIT · no dependencies",
+          tagline: "<b>Prove the policy enforces.</b> Your policy vs. your trace, checked offline.",
+          copy: "Copy", copied: "Copied",
+          rulesTitle: "Nine checks", colRule: "Rule", colFails: "Fails when",
+          c1n: "default-deny", c1d: "an unset allowlist means \"allow everything\"",
+          c2n: "list/call parity", c2d: "a tool hidden from tools/list is still callable by name",
+          c3n: "narrowing only", c3d: "a request widens a client's grant",
+          c4n: "credential separation", c4d: "the client token is replayed upstream",
+          c5n: "fail closed", c5d: "a call is allowed because the check errored",
+          c6n: "enforcement parity", c6d: "the policy denies it, the gateway allowed it",
+          c7n: "shadow MCP", c7d: "a server is reachable outside the gateway",
+          c8n: "receipt chain", c8d: "allowed calls left no verifiable receipt",
+          c9n: "description integrity", c9d: "a tool definition changed after approval",
+          whyTitle: "Why it exists",
+          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
+          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
+          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
+          useTitle: "Use it in CI",
+          s1t: "Emit a trace", s1d: "Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.",
+          s2t: "Write the policy", s2d: "attest init scaffolds one. Default deny, per-client allowlists, conditions on arguments.",
+          s3t: "Gate the build", s3d: "The action fails on critical or high findings, so \"the policy is enforced\" becomes something the pipeline proves.",
+          sp1: "checks", sp2: "dependencies", sp3: "trace format",
+          citeTitle: "Cite this work — BibTeX", footReleases: "Releases"
+        },
+        ru: {
+          kicker: "Открытый код · MIT · без зависимостей",
+          tagline: "<b>Докажи, что политика работает.</b> Твоя политика против твоего трейса, проверка офлайн.",
+          copy: "Copy", copied: "Copied",
+          rulesTitle: "Девять проверок", colRule: "Правило", colFails: "Срабатывает, когда",
+          c1n: "default-deny", c1d: "незаданный allowlist означает «разрешено всё»",
+          c2n: "list/call parity", c2d: "инструмент скрыт из tools/list, но вызывается по имени",
+          c3n: "narrowing only", c3d: "запрос расширяет права клиента",
+          c4n: "credential separation", c4d: "токен клиента переиспользуется вверх по стеку",
+          c5n: "fail closed", c5d: "вызов разрешён из-за упавшей проверки",
+          c6n: "enforcement parity", c6d: "политика запрещает, шлюз разрешил",
+          c7n: "shadow MCP", c7d: "сервер доступен в обход шлюза",
+          c8n: "receipt chain", c8d: "у разрешённых вызовов нет проверяемой квитанции",
+          c9n: "description integrity", c9d: "описание инструмента изменилось после одобрения",
+          whyTitle: "Зачем это нужно",
+          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
+          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
+          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
+          useTitle: "Использование в CI",
+          s1t: "Сними трейс", s1d: "Newline-delimited JSON из любого прокси, харнесса или шага пайплайна. Глубоко ничего инструментировать не надо.",
+          s2t: "Опиши политику", s2d: "attest init создаёт шаблон. Default deny, allowlist на клиента, условия по аргументам.",
+          s3t: "Закрой сборку", s3d: "Action падает на critical и high — «политика работает» становится тем, что доказывает пайплайн.",
+          sp1: "проверок", sp2: "зависимостей", sp3: "формат трейса",
+          citeTitle: "Цитирование — BibTeX", footReleases: "Релизы"
+        }
+      };
+
+      var currentLang = "en";
+      function detectLang() {
+        try {
+          var saved = localStorage.getItem("mcp-attest-lang");
+          if (saved === "en" || saved === "ru") return saved;
+        } catch (e) {}
+        var langs = navigator.languages || [navigator.language || "en"];
+        for (var i = 0; i < langs.length; i++) {
+          var l = (langs[i] || "").toLowerCase();
+          if (l.indexOf("ru") === 0) return "ru";
+          if (l.indexOf("en") === 0) return "en";
+        }
+        return "en";
+      }
+      function applyLang(lang) {
+        currentLang = lang;
+        document.documentElement.lang = lang;
+        var nodes = document.querySelectorAll("[data-i18n]");
+        for (var i = 0; i < nodes.length; i++) {
+          var key = nodes[i].getAttribute("data-i18n");
+          if (dict[lang] && dict[lang][key] !== undefined) nodes[i].innerHTML = dict[lang][key];
+        }
+        document.getElementById("lang-en").setAttribute("aria-pressed", lang === "en" ? "true" : "false");
+        document.getElementById("lang-ru").setAttribute("aria-pressed", lang === "ru" ? "true" : "false");
+        document.title = lang === "ru" ? "MCP-ATTEST — докажи, что политика работает" : "MCP-ATTEST — prove the policy enforces";
+        try { localStorage.setItem("mcp-attest-lang", lang); } catch (e) {}
+      }
+      document.getElementById("lang-en").addEventListener("click", function () { applyLang("en"); });
+      document.getElementById("lang-ru").addEventListener("click", function () { applyLang("ru"); });
+      applyLang(detectLang());
+
+      (function () {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "https://api.github.com/repos/Balanov/mcp-attest", true);
+        xhr.timeout = 6000;
+        xhr.onload = function () {
+          if (xhr.status !== 200) return;
+          try {
+            var d = JSON.parse(xhr.responseText);
+            if (typeof d.stargazers_count === "number") document.getElementById("gh-stars").textContent = d.stargazers_count;
+            if (typeof d.forks_count === "number") document.getElementById("gh-forks").textContent = d.forks_count;
+          } catch (e) {}
+        };
+        try { xhr.send(); } catch (e) {}
+      })();
+
+      function copyText(text, btn) {
+        function done() {
+          btn.textContent = dict[currentLang].copied;
+          btn.classList.add("copied");
+          setTimeout(function () { btn.textContent = dict[currentLang].copy; btn.classList.remove("copied"); }, 1500);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+        } else { legacyCopy(text); done(); }
+      }
+      function legacyCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      var copyBtns = document.querySelectorAll(".copy-btn");
+      for (var i = 0; i < copyBtns.length; i++) {
+        (function (btn) {
+          btn.addEventListener("click", function () {
+            var target = document.getElementById(btn.getAttribute("data-copy"));
+            if (target) copyText(target.textContent, btn);
+          });
+        })(copyBtns[i]);
+      }
+
+      var term = document.getElementById("terminal-body");
+      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var script = [
+        { cls: "prompt", text: '$ attest check --policy policy.json --trace session.jsonl\n', type: true },
+        { cls: "crit", text: "!! [CRITICAL] C6 Policy denies 'shell__exec' but the gateway allowed it\n" },
+        { cls: "dim", text: "          policy says deny (tool is on the deny list); the trace records allow.\n" },
+        { cls: "dim", text: "          this is the 'accepted but not enforced' failure mode.\n" },
+        { cls: "crit", text: "!! [CRITICAL] C5 Call allowed after a failed policy evaluation\n" },
+        { cls: "dim", text: "          reason: 'policy error while evaluating rule set' — fail closed.\n" },
+        { cls: "crit", text: "!! [CRITICAL] C9 Tool 'fs__read_file' changed after it was listed\n" },
+        { cls: "warn", text: "!  [HIGH    ] C7 Client 'claude-code' reaches 'shell' outside the control point\n" },
+        { cls: "ok", text: "\nsummary: critical=7, high=6\n" },
+        { cls: "prompt", text: '$ echo $?\n', type: true },
+        { cls: "ok", text: "1\n" }
+      ];
+      function escHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+      function renderAll() {
+        var html = "";
+        for (var i = 0; i < script.length; i++) {
+          html += '<span class="' + script[i].cls + '">' + escHtml(script[i].text) + "</span>";
+        }
+        term.innerHTML = html;
+      }
+      if (reduced) {
+        renderAll();
+      } else {
+        var idx = 0, charPos = 0, buffer = "";
+        function tick() {
+          if (idx >= script.length) {
+            setTimeout(function () { idx = 0; charPos = 0; buffer = ""; term.innerHTML = '<span class="cursor"></span>'; setTimeout(tick, 8000); }, 6000);
+            return;
+          }
+          var line = script[idx];
+          if (!line.type) {
+            buffer += '<span class="' + line.cls + '">' + escHtml(line.text) + "</span>";
+            term.innerHTML = buffer + '<span class="cursor"></span>';
+            idx++;
+            setTimeout(tick, 520);
+            return;
+          }
+          charPos++;
+          term.innerHTML = buffer + '<span class="' + line.cls + '">' + escHtml(line.text.slice(0, charPos)) + '</span><span class="cursor"></span>';
+          if (charPos >= line.text.length) {
+            buffer += '<span class="' + line.cls + '">' + escHtml(line.text) + "</span>";
+            idx++; charPos = 0;
+            setTimeout(tick, 480);
+          } else {
+            setTimeout(tick, 22 + Math.random() * 24);
+          }
+        }
+        tick();
+      }
+    })();
+  </script>
+</body>
+</html>
