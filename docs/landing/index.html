@@ -233,11 +233,11 @@
       <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
         <span>MCP-ATTEST</span>
-        <span class="ver">0.1.5</span>
+        <span class="ver">1.0.0</span>
       </a>
       <div class="top-right">
         <nav class="nav">
-          <a href="#checks" data-i18n="navChecks">Checks</a>
+          <a href="#checks" data-i18n="navRules">Rules</a>
           <a href="#how" data-i18n="navHow">How it works</a>
           <a href="#ci" data-i18n="navCi">CI</a>
         </nav>
@@ -266,8 +266,8 @@
       <section class="hero">
         <div class="hero-left">
           <p class="kicker" data-i18n="kicker">Open source · MIT · no dependencies</p>
-          <h1 data-i18n="headline">Prove that your MCP policy actually enforces.</h1>
-          <p class="tagline" data-i18n="tagline">Two files in — the policy you wrote and the trace of what really happened. Every place they disagree comes back as a finding.</p>
+          <h1 data-i18n="headline">Prove that your server denies what it must deny.</h1>
+          <p class="tagline" data-i18n="tagline">Point it at a live MCP server. It connects as every identity in your policy, sends the real calls, and reports every place where the server's decision differs from the one your policy requires.</p>
           <div class="hero-actions">
             <div class="install">
               <code><span class="dollar">$ </span>pipx install mcp-attest</code>
@@ -278,25 +278,25 @@
             <a class="btn" href="https://pypi.org/project/mcp-attest/" data-i18n="ctaPypi">PyPI</a>
           </div>
           <ul class="facts">
-            <li data-i18n="f1">9 checks, C1–C9</li>
+            <li data-i18n="f1">12 rules, OWASP-mapped</li>
             <li data-i18n="f2">0 runtime dependencies</li>
-            <li data-i18n="f3">Python 3.10+</li>
-            <li data-i18n="f4">No network, no telemetry</li>
+            <li data-i18n="f3">stdio + Streamable HTTP</li>
+            <li data-i18n="f4">No model, no telemetry</li>
           </ul>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <span class="label" data-i18n="cardTitle">The enforcement gap</span>
-            <span class="label" data-i18n="cardCmd">attest check</span>
+            <span class="label" data-i18n="cardTitle">The authorization gap</span>
+            <span class="label" data-i18n="cardCmd">attest test</span>
           </div>
           <div class="gap">
             <div class="k" data-i18n="gapPolicy">Policy says</div>
-            <div class="v ok">shell__exec &rarr; deny</div>
-            <div class="k" data-i18n="gapGateway">Gateway did</div>
-            <div class="v bad">shell__exec &rarr; allow</div>
+            <div class="v ok">alice &rarr; refund_order &rarr; deny</div>
+            <div class="k" data-i18n="gapServer">Server did</div>
+            <div class="v bad">alice &rarr; refund_order &rarr; allow</div>
             <div class="k" data-i18n="gapHarness">mcp-attest</div>
-            <div class="v full"><span class="chip">C6 CRITICAL · policy denied, gateway allowed</span></div>
+            <div class="v full"><span class="chip">AT-AUTHZ-001 CRITICAL · broken access control</span></div>
           </div>
           <div class="terminal-body" id="terminal-body" aria-hidden="true"></div>
         </div>
@@ -305,25 +305,28 @@
       <section id="how">
         <h2 data-i18n="howTitle">How it works</h2>
         <div class="flow">
-          <div class="item"><div class="n">01</div><div class="t" data-i18n="h1t">POLICY</div><div class="d" data-i18n="h1d">The rules you wrote, as one JSON file: allow, deny, conditions, defaults.</div></div>
-          <div class="item"><div class="n">02</div><div class="t" data-i18n="h2t">TRACE</div><div class="d" data-i18n="h2d">What the gateway actually decided, recorded as newline-delimited JSON.</div></div>
-          <div class="item"><div class="n">03</div><div class="t" data-i18n="h3t">REPLAY</div><div class="d" data-i18n="h3d">Every recorded call is re-evaluated locally, with the same arguments.</div></div>
-          <div class="item"><div class="n">04</div><div class="t" data-i18n="h4t">FINDINGS</div><div class="d" data-i18n="h4d">Evidence, a blocking exit code, and an optional hash-chained receipt trail.</div></div>
+          <div class="item"><div class="n">01</div><div class="t" data-i18n="h1t">POLICY</div><div class="d" data-i18n="h1d">Who may call what, and how each identity presents itself: headers or environment.</div></div>
+          <div class="item"><div class="n">02</div><div class="t" data-i18n="h2t">CONNECT</div><div class="d" data-i18n="h2d">One session per identity over stdio or Streamable HTTP. JSON-RPC spoken directly, no SDK.</div></div>
+          <div class="item"><div class="n">03</div><div class="t" data-i18n="h3t">CALL</div><div class="d" data-i18n="h3d">Every identity against every tool, with arguments derived from the tool's own schema.</div></div>
+          <div class="item"><div class="n">04</div><div class="t" data-i18n="h4t">FINDINGS</div><div class="d" data-i18n="h4d">A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.</div></div>
         </div>
       </section>
 
       <section id="checks">
-        <h2 data-i18n="rulesTitle">Nine checks</h2>
+        <h2 data-i18n="rulesTitle">Twelve rules</h2>
         <div class="checks">
-          <div class="check"><div class="id">C1</div><div class="n" data-i18n="c1n">default-deny</div><div class="d" data-i18n="c1d">an unset allowlist means "allow everything"</div></div>
-          <div class="check"><div class="id">C2</div><div class="n" data-i18n="c2n">list/call parity</div><div class="d" data-i18n="c2d">a tool hidden from tools/list is still callable by name</div></div>
-          <div class="check"><div class="id">C3</div><div class="n" data-i18n="c3n">narrowing only</div><div class="d" data-i18n="c3d">a request widens a client's grant</div></div>
-          <div class="check"><div class="id">C4</div><div class="n" data-i18n="c4n">credential separation</div><div class="d" data-i18n="c4d">the client token is replayed upstream</div></div>
-          <div class="check"><div class="id">C5</div><div class="n" data-i18n="c5n">fail closed</div><div class="d" data-i18n="c5d">a call is allowed because the check errored</div></div>
-          <div class="check"><div class="id">C6</div><div class="n" data-i18n="c6n">enforcement parity</div><div class="d" data-i18n="c6d">the policy denies it, the gateway allowed it</div></div>
-          <div class="check"><div class="id">C7</div><div class="n" data-i18n="c7n">shadow MCP</div><div class="d" data-i18n="c7d">a server is reachable outside the gateway</div></div>
-          <div class="check"><div class="id">C8</div><div class="n" data-i18n="c8n">receipt chain</div><div class="d" data-i18n="c8d">allowed calls left no verifiable receipt</div></div>
-          <div class="check"><div class="id">C9</div><div class="n" data-i18n="c9n">description integrity</div><div class="d" data-i18n="c9d">a tool definition changed after approval</div></div>
+          <div class="check"><div class="id">AT-AUTHZ-001</div><div class="n" data-i18n="r1n">policy per identity</div><div class="d" data-i18n="r1d">the server allows what your policy denies</div></div>
+          <div class="check"><div class="id">AT-AUTHZ-002</div><div class="n" data-i18n="r2n">cross-user objects</div><div class="d" data-i18n="r2d">a valid id belonging to another principal</div></div>
+          <div class="check"><div class="id">AT-TOKEN-001</div><div class="n" data-i18n="r3n">tokens validated</div><div class="d" data-i18n="r3d">a malformed, tampered or expired token gets through</div></div>
+          <div class="check"><div class="id">AT-POISON-001</div><div class="n" data-i18n="r4n">no hidden instructions</div><div class="d" data-i18n="r4d">instructions smuggled into tool metadata</div></div>
+          <div class="check"><div class="id">AT-DRIFT-001</div><div class="n" data-i18n="r5n">no manifest drift</div><div class="d" data-i18n="r5d">a tool added or changed after approval</div></div>
+          <div class="check"><div class="id">AT-SECRET-001</div><div class="n" data-i18n="r6n">no secrets in output</div><div class="d" data-i18n="r6d">a credential in the tool output</div></div>
+          <div class="check"><div class="id">AT-FAILCLOSED-001</div><div class="n" data-i18n="r7n">fail closed</div><div class="d" data-i18n="r7d">a call executed with missing arguments</div></div>
+          <div class="check"><div class="id">AT-INJECT-001</div><div class="n" data-i18n="r8n">no injected output</div><div class="d" data-i18n="r8d">instructions aimed at the model in a result</div></div>
+          <div class="check"><div class="id">AT-SINK-001</div><div class="n" data-i18n="r9n">guarded sinks</div><div class="d" data-i18n="r9d">model input reaching a shell, a file or a URL</div></div>
+          <div class="check"><div class="id">AT-SCHEMA-001</div><div class="n" data-i18n="r10n">strict schemas</div><div class="d" data-i18n="r10d">untyped, unbounded or free-form arguments</div></div>
+          <div class="check"><div class="id">AT-APPROVAL-001</div><div class="n" data-i18n="r11n">declared risk</div><div class="d" data-i18n="r11d">a state-changing tool with no risk declared</div></div>
+          <div class="check"><div class="id">AT-ERROR-001</div><div class="n" data-i18n="r12n">clean errors</div><div class="d" data-i18n="r12d">stack traces and internal paths in errors</div></div>
         </div>
       </section>
 
@@ -331,16 +334,17 @@
         <h2 data-i18n="useTitle">Use it in CI</h2>
         <div class="cols2">
           <div class="steps">
-            <div class="step"><div class="n">1</div><div><div class="t" data-i18n="s1t">Emit a trace</div><div class="d" data-i18n="s1d">Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.</div></div></div>
-            <div class="step"><div class="n">2</div><div><div class="t" data-i18n="s2t">Write the policy</div><div class="d" data-i18n="s2d"><code>attest init</code> scaffolds one. Default deny, per-client allowlists, conditions on arguments.</div></div></div>
-            <div class="step"><div class="n">3</div><div><div class="t" data-i18n="s3t">Gate the build</div><div class="d" data-i18n="s3d">The action fails on critical or high findings, so "the policy is enforced" becomes something the pipeline proves.</div></div></div>
-            <div class="step"><div class="n">4</div><div><div class="t" data-i18n="s4t">Keep receipts</div><div class="d" data-i18n="s4d">Optional hash-chained, HMAC-signed receipts for every allowed call.</div></div></div>
+            <div class="step"><div class="n">1</div><div><div class="t" data-i18n="s1t">Write the policy</div><div class="d" data-i18n="s1d"><code>attest init --command "python my_server.py"</code> scaffolds one from the live tool list. Default deny, one entry per identity.</div></div></div>
+            <div class="step"><div class="n">2</div><div><div class="t" data-i18n="s2t">Point it at the server</div><div class="d" data-i18n="s2d">stdio or Streamable HTTP. The harness connects as each identity and calls what the policy allows and forbids.</div></div></div>
+            <div class="step"><div class="n">3</div><div><div class="t" data-i18n="s3t">Gate the build</div><div class="d" data-i18n="s3d">The action fails on critical or high findings, and SARIF lands in code scanning next to the rest of the repository.</div></div></div>
+            <div class="step"><div class="n">4</div><div><div class="t" data-i18n="s4t">Keep the evidence</div><div class="d" data-i18n="s4d">A hash-chained, optionally signed bundle per run: request, response, identity, decision, timestamp.</div></div></div>
           </div>
           <div class="code">
             <pre>- uses: Balanov/mcp-attest@v0
   with:
     policy: .attest/policy.json
-    trace: .attest/trace.jsonl</pre>
+    command: "python my_server.py"
+    sarif: mcp-attest.sarif</pre>
           </div>
         </div>
       </section>
@@ -349,12 +353,12 @@
         <h2 data-i18n="whyTitle">Why it exists</h2>
         <div class="why">
           <a class="card2" href="https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/" target="_blank" rel="noopener">
-            <div class="src">agentgateway, own evaluation · October 2026</div>
-            <p class="quote" data-i18n="why1">"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check."</p>
+            <div class="src">OWASP · MCP Security Testing Guide</div>
+            <p class="quote" data-i18n="why1">"Security controls should be executable tests, not only checklist items." Its minimum automated test set starts with the authorization matrix: every tool, role, scope, tenant and object, including ids owned by another user.</p>
           </a>
           <a class="card2" href="https://pipelab.org/blog/state-of-mcp-security-2026/" target="_blank" rel="noopener">
-            <div class="src">Pipelock · State of MCP Security 2026</div>
-            <p class="quote" data-i18n="why2">"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible."</p>
+            <div class="src">agentgateway, own evaluation · October 2026</div>
+            <p class="quote" data-i18n="why2">"Turning a policy on is not the end of the job: send real calls and check."</p>
           </a>
           <a class="card2" href="https://www.nsa.gov/Portals/75/documents/Cybersecurity/CSI_MCP_SECURITY.pdf" target="_blank" rel="noopener">
             <div class="src">NSA / CISA · MCP Security Design Considerations</div>
@@ -362,15 +366,15 @@
           </a>
         </div>
         <div class="honest">
-          <p data-i18n="honest">Recorded MCP sessions are already judged by other tools — agent-strace, mcpsnoop, mcp-conformance, mcp-traceguard, assay, snulbug. This one is narrower: one offline question, zero dependencies, no proxy, no SDK. <a href="https://github.com/Balanov/mcp-attest/blob/main/docs/POSITIONING.md" data-i18n="honestLink">Full comparison →</a></p>
+          <p data-i18n="honest">MCP testing is crowded — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. What none of them does is the authorization matrix and token validation the OWASP guide puts first. This one does, offline and deterministically. <a href="https://github.com/Balanov/mcp-attest/blob/main/docs/POSITIONING.md" data-i18n="honestLink">Full comparison →</a></p>
         </div>
       </section>
 
       <section id="specs">
         <div class="spec-row">
-          <span><b>9</b> <span data-i18n="sp1">checks</span></span>
+          <span><b>12</b> <span data-i18n="sp1">rules</span></span>
           <span><b>0</b> <span data-i18n="sp2">dependencies</span></span>
-          <span><b>JSONL</b> <span data-i18n="sp3">trace format</span></span>
+          <span><b>stdio + HTTP</b> <span data-i18n="sp3">transports</span></span>
           <span><b>Python 3.10+</b></span>
           <span><b>MIT</b></span>
         </div>
@@ -382,7 +386,7 @@
           <div class="cite-body">
             <button class="copy-btn" type="button" data-copy="bibtex" data-i18n="copy">Copy</button>
             <pre id="bibtex">@misc{balanov2026mcpattest,
-  title  = {MCP-ATTEST: Conformance and Attestation for MCP Agent Access Control},
+  title  = {MCP-ATTEST: Authorization Conformance Harness for MCP Servers},
   author = {Balanov, Anton},
   year   = {2026},
   howpublished = {\url{https://github.com/Balanov/mcp-attest}},
@@ -422,83 +426,89 @@
 
       var dict = {
         en: {
-          navChecks: "Checks", navHow: "How it works", navCi: "CI",
+          navRules: "Rules", navHow: "How it works", navCi: "CI",
           star: "Star", fork: "Fork",
           kicker: "Open source · MIT · no dependencies",
-          headline: "Prove that your MCP policy actually enforces.",
-          tagline: "Two files in — the policy you wrote and the trace of what really happened. Every place they disagree comes back as a finding.",
+          headline: "Prove that your server denies what it must deny.",
+          tagline: "Point it at a live MCP server. It connects as every identity in your policy, sends the real calls, and reports every place where the server's decision differs from the one your policy requires.",
           copy: "Copy", copied: "Copied",
           ctaGit: "GitHub", ctaPypi: "PyPI",
-          f1: "9 checks, C1–C9", f2: "0 runtime dependencies", f3: "Python 3.10+", f4: "No network, no telemetry",
-          cardTitle: "The enforcement gap", cardCmd: "attest check",
-          gapPolicy: "Policy says", gapGateway: "Gateway did", gapHarness: "mcp-attest",
+          f1: "12 rules, OWASP-mapped", f2: "0 runtime dependencies", f3: "stdio + Streamable HTTP", f4: "No model, no telemetry",
+          cardTitle: "The authorization gap", cardCmd: "attest test",
+          gapPolicy: "Policy says", gapServer: "Server did", gapHarness: "mcp-attest",
           howTitle: "How it works",
-          h1t: "POLICY", h1d: "The rules you wrote, as one JSON file: allow, deny, conditions, defaults.",
-          h2t: "TRACE", h2d: "What the gateway actually decided, recorded as newline-delimited JSON.",
-          h3t: "REPLAY", h3d: "Every recorded call is re-evaluated locally, with the same arguments.",
-          h4t: "FINDINGS", h4d: "Evidence, a blocking exit code, and an optional hash-chained receipt trail.",
-          rulesTitle: "Nine checks",
-          c1n: "default-deny", c1d: "an unset allowlist means \"allow everything\"",
-          c2n: "list/call parity", c2d: "a tool hidden from tools/list is still callable by name",
-          c3n: "narrowing only", c3d: "a request widens a client's grant",
-          c4n: "credential separation", c4d: "the client token is replayed upstream",
-          c5n: "fail closed", c5d: "a call is allowed because the check errored",
-          c6n: "enforcement parity", c6d: "the policy denies it, the gateway allowed it",
-          c7n: "shadow MCP", c7d: "a server is reachable outside the gateway",
-          c8n: "receipt chain", c8d: "allowed calls left no verifiable receipt",
-          c9n: "description integrity", c9d: "a tool definition changed after approval",
+          h1t: "POLICY", h1d: "Who may call what, and how each identity presents itself: headers or environment.",
+          h2t: "CONNECT", h2d: "One session per identity over stdio or Streamable HTTP. JSON-RPC spoken directly, no SDK.",
+          h3t: "CALL", h3d: "Every identity against every tool, with arguments derived from the tool's own schema.",
+          h4t: "FINDINGS", h4d: "A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.",
+          rulesTitle: "Twelve rules",
+          r1n: "policy per identity", r1d: "the server allows what your policy denies",
+          r2n: "cross-user objects", r2d: "a valid id belonging to another principal",
+          r3n: "tokens validated", r3d: "a malformed, tampered or expired token gets through",
+          r4n: "no hidden instructions", r4d: "instructions smuggled into tool metadata",
+          r5n: "no manifest drift", r5d: "a tool added or changed after approval",
+          r6n: "no secrets in output", r6d: "a credential in the tool output",
+          r7n: "fail closed", r7d: "a call executed with missing arguments",
+          r8n: "no injected output", r8d: "instructions aimed at the model in a result",
+          r9n: "guarded sinks", r9d: "model input reaching a shell, a file or a URL",
+          r10n: "strict schemas", r10d: "untyped, unbounded or free-form arguments",
+          r11n: "declared risk", r11d: "a state-changing tool with no risk declared",
+          r12n: "clean errors", r12d: "stack traces and internal paths in errors",
           useTitle: "Use it in CI",
-          s1t: "Emit a trace", s1d: "Newline-delimited JSON from any proxy, harness or pipeline step. Nothing to instrument deeply.",
-          s2t: "Write the policy", s2d: "attest init scaffolds one. Default deny, per-client allowlists, conditions on arguments.",
-          s3t: "Gate the build", s3d: "The action fails on critical or high findings, so \"the policy is enforced\" becomes something the pipeline proves.",
-          s4t: "Keep receipts", s4d: "Optional hash-chained, HMAC-signed receipts for every allowed call.",
+          s1t: "Write the policy", s1d: "attest init --command \"python my_server.py\" scaffolds one from the live tool list. Default deny, one entry per identity.",
+          s2t: "Point it at the server", s2d: "stdio or Streamable HTTP. The harness connects as each identity and calls what the policy allows and forbids.",
+          s3t: "Gate the build", s3d: "The action fails on critical or high findings, and SARIF lands in code scanning next to the rest of the repository.",
+          s4t: "Keep the evidence", s4d: "A hash-chained, optionally signed bundle per run: request, response, identity, decision, timestamp.",
           whyTitle: "Why it exists",
-          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
-          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
+          why1: "\"Security controls should be executable tests, not only checklist items.\" Its minimum automated test set starts with the authorization matrix: every tool, role, scope, tenant and object, including ids owned by another user.",
+          why2: "\"Turning a policy on is not the end of the job: send real calls and check.\"",
           why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
-          honest: "Recorded MCP sessions are already judged by other tools — agent-strace, mcpsnoop, mcp-conformance, mcp-traceguard, assay, snulbug. This one is narrower: one offline question, zero dependencies, no proxy, no SDK. ",
+          honest: "MCP testing is crowded — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. What none of them does is the authorization matrix and token validation the OWASP guide puts first. This one does, offline and deterministically. ",
           honestLink: "Full comparison →",
-          sp1: "checks", sp2: "dependencies", sp3: "trace format",
+          sp1: "rules", sp2: "dependencies", sp3: "transports",
           citeTitle: "Cite this work — BibTeX", footReleases: "Releases"
         },
         ru: {
-          navChecks: "Проверки", navHow: "Как работает", navCi: "CI",
+          navRules: "Правила", navHow: "Как работает", navCi: "CI",
           star: "Звёзды", fork: "Форки",
           kicker: "Открытый код · MIT · без зависимостей",
-          headline: "Докажи, что политика MCP действительно применяется.",
-          tagline: "Два файла на входе — политика, которую ты написал, и журнал того, что произошло на самом деле. Каждое расхождение возвращается находкой.",
+          headline: "Докажи, что сервер отказывает в том, в чём обязан.",
+          tagline: "Наведи на живой MCP-сервер. Он подключается как каждая личность из твоей политики, отправляет настоящие вызовы и показывает все места, где решение сервера расходится с решением политики.",
           copy: "Copy", copied: "Скопировано",
           ctaGit: "GitHub", ctaPypi: "PyPI",
-          f1: "9 проверок, C1–C9", f2: "0 зависимостей", f3: "Python 3.10+", f4: "Без сети и телеметрии",
-          cardTitle: "Разрыв enforcement", cardCmd: "attest check",
-          gapPolicy: "Политика", gapGateway: "Шлюз сделал", gapHarness: "mcp-attest",
+          f1: "12 правил по OWASP", f2: "0 зависимостей", f3: "stdio + Streamable HTTP", f4: "Без модели и телеметрии",
+          cardTitle: "Разрыв авторизации", cardCmd: "attest test",
+          gapPolicy: "Политика", gapServer: "Сервер сделал", gapHarness: "mcp-attest",
           howTitle: "Как это работает",
-          h1t: "ПОЛИТИКА", h1d: "Правила, которые ты написал, — один JSON-файл: allow, deny, условия, умолчания.",
-          h2t: "ЖУРНАЛ", h2d: "Что шлюз решил на самом деле, записанное как JSON по одной строке.",
-          h3t: "ПЕРЕИГРОВКА", h3d: "Каждый записанный вызов пересчитывается локально, с теми же аргументами.",
-          h4t: "НАХОДКИ", h4d: "Улики, блокирующий код возврата и опциональная хеш-цепочка квитанций.",
-          rulesTitle: "Девять проверок",
-          c1n: "default-deny", c1d: "незаданный allowlist означает «разрешено всё»",
-          c2n: "list/call parity", c2d: "инструмент скрыт из tools/list, но вызывается по имени",
-          c3n: "narrowing only", c3d: "запрос расширяет права клиента",
-          c4n: "credential separation", c4d: "токен клиента переиспользуется вверх по стеку",
-          c5n: "fail closed", c5d: "вызов разрешён из-за упавшей проверки",
-          c6n: "enforcement parity", c6d: "политика запрещает, шлюз разрешил",
-          c7n: "shadow MCP", c7d: "сервер доступен в обход шлюза",
-          c8n: "receipt chain", c8d: "у разрешённых вызовов нет проверяемой квитанции",
-          c9n: "description integrity", c9d: "описание инструмента изменилось после одобрения",
+          h1t: "ПОЛИТИКА", h1d: "Кому что можно вызывать и как личность себя представляет: заголовки или окружение.",
+          h2t: "ПОДКЛЮЧЕНИЕ", h2d: "По сессии на личность, stdio или Streamable HTTP. JSON-RPC говорим сами, без SDK.",
+          h3t: "ВЫЗОВЫ", h3d: "Каждая личность против каждого инструмента, аргументы берутся из его же схемы.",
+          h4t: "НАХОДКИ", h4d: "Блокирующий код возврата, SARIF для code scanning и хеш-цепочка доказательств.",
+          rulesTitle: "Двенадцать правил",
+          r1n: "политика на личность", r1d: "сервер разрешает то, что политика запрещает",
+          r2n: "чужие объекты", r2d: "валидный идентификатор другого принципала",
+          r3n: "проверка токенов", r3d: "некорректный, подделанный или просроченный токен проходит",
+          r4n: "нет скрытых инструкций", r4d: "инструкции спрятаны в метаданных инструмента",
+          r5n: "манифест не меняется", r5d: "инструмент добавлен или изменён после одобрения",
+          r6n: "нет секретов в выводе", r6d: "учётные данные в результате инструмента",
+          r7n: "fail closed", r7d: "вызов выполнен без обязательных аргументов",
+          r8n: "нет инструкций в выводе", r8d: "внутри результата инструкции для модели",
+          r9n: "ограниченные стоки", r9d: "ввод модели доходит до шелла, файла или URL",
+          r10n: "строгие схемы", r10d: "аргументы без типов, границ и структуры",
+          r11n: "объявленный риск", r11d: "инструмент с побочными эффектами без риска",
+          r12n: "чистые ошибки", r12d: "стек-трейсы и внутренние пути в ошибках",
           useTitle: "Использование в CI",
-          s1t: "Сними трейс", s1d: "Newline-delimited JSON из любого прокси, харнесса или шага пайплайна. Глубоко ничего инструментировать не надо.",
-          s2t: "Опиши политику", s2d: "attest init создаёт шаблон. Default deny, allowlist на клиента, условия по аргументам.",
-          s3t: "Закрой сборку", s3d: "Action падает на critical и high — «политика работает» становится тем, что доказывает пайплайн.",
-          s4t: "Сохрани квитанции", s4d: "Опциональная хеш-цепочка с подписью HMAC для каждого разрешённого вызова.",
+          s1t: "Опиши политику", s1d: "attest init --command \"python my_server.py\" создаёт шаблон по живому списку инструментов. Default deny, по записи на личность.",
+          s2t: "Наведи на сервер", s2d: "stdio или Streamable HTTP. Харнесс подключается как каждая личность и вызывает то, что политика разрешает и запрещает.",
+          s3t: "Закрой сборку", s3d: "Action падает на critical и high, а SARIF попадает в code scanning рядом с остальными результатами репозитория.",
+          s4t: "Сохрани доказательства", s4d: "Хеш-цепь с опциональной подписью на каждый прогон: запрос, ответ, личность, решение, время.",
           whyTitle: "Зачем это нужно",
-          why1: "\"One argument-conditioned policy was reported as accepted and still did not enforce what it said… turning a policy on is not the end of the job: send real calls and check.\"",
-          why2: "\"Gateways only protect the servers they route. An agent calling an MCP server outside the gateway is invisible.\"",
+          why1: "\"Security controls should be executable tests, not only checklist items.\" Минимальный автоматизированный набор гайда начинается с матрицы авторизации: каждый инструмент, роль, scope, тенант и объект, включая чужие идентификаторы.",
+          why2: "\"Turning a policy on is not the end of the job: send real calls and check.\"",
           why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
-          honest: "Записанные MCP-сессии уже разбирают другие инструменты — agent-strace, mcpsnoop, mcp-conformance, mcp-traceguard, assay, snulbug. Наш — уже: один офлайн-вопрос, ноль зависимостей, без прокси и SDK. ",
+          honest: "Тестирование MCP забито — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. Чего не делает ни один из них — матрица авторизации и проверка токенов, которые гайд OWASP ставит первыми. Наш делает, офлайн и детерминированно. ",
           honestLink: "Полное сравнение →",
-          sp1: "проверок", sp2: "зависимостей", sp3: "формат трейса",
+          sp1: "правил", sp2: "зависимостей", sp3: "транспортов",
           citeTitle: "Цитирование — BibTeX", footReleases: "Релизы"
         }
       };
@@ -579,13 +589,14 @@
       var term = document.getElementById("terminal-body");
       var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       var script = [
-        { cls: "prompt", text: '$ attest check --policy policy.json --trace session.jsonl\n', type: true },
-        { cls: "crit", text: "!! [CRITICAL] C6 Policy denies 'shell__exec' but the gateway allowed it\n" },
-        { cls: "dim", text: "          policy says deny (tool is on the deny list); the trace records allow.\n" },
-        { cls: "dim", text: "          this is the 'accepted but not enforced' failure mode.\n" },
-        { cls: "crit", text: "!! [CRITICAL] C9 Tool 'fs__read_file' changed after it was listed\n" },
-        { cls: "warn", text: "!  [HIGH    ] C7 Client 'claude-code' reaches 'shell' outside the control point\n" },
-        { cls: "ok", text: "\nsummary: critical=7, high=6\n" },
+        { cls: "prompt", text: '$ attest test --command "python my_server.py" --policy policy.json\n', type: true },
+        { cls: "crit", text: "!! [CRITICAL] AT-AUTHZ-001 'alice' was allowed to call 'refund_order'\n" },
+        { cls: "dim", text: "          the policy denies it for this identity, but the server executed the call.\n" },
+        { cls: "dim", text: "          this is broken access control, not a policy tuning problem.\n" },
+        { cls: "crit", text: "!! [CRITICAL] AT-AUTHZ-002 case AUTHZ-CROSS-01: 'alice' reached an object\n" },
+        { cls: "dim", text: "          she must not reach — order B-77 belongs to bob, not to alice.\n" },
+        { cls: "warn", text: "!  [HIGH    ] AT-SINK-001 tool 'read_note' takes an unconstrained 'path'\n" },
+        { cls: "ok", text: "\nsummary: critical=4, high=2, medium=4, low=3\n" },
         { cls: "prompt", text: '$ echo $?\n', type: true },
         { cls: "ok", text: "1\n" }
       ];

@@ -7,8 +7,8 @@ GitHub counters, and it honours the system colour scheme. Copy it to
 `/mcp-attest/index.html` on the hosting account to publish it at
 `balanov.pro/mcp-attest/`.
 
-The page states the problem the tool exists for, shows the enforcement gap
-(policy says deny, the gateway allowed it), prints the install command, lists
-the nine checks, and links to the specification. The live counters are read
-from the GitHub API at runtime, so the page does not have to be edited when the
-numbers move.
+The page states the problem the tool exists for, shows the authorization gap
+(policy says deny, the server allowed it), prints the install command, lists
+the twelve live rules, and links to the specification. The live counters are
+read from the GitHub API at runtime, so the page does not have to be edited
+when the numbers move.
