@@ -1,5 +1,10 @@
 # mcp-attest
 
+[![CI](https://github.com/Balanov/mcp-attest/actions/workflows/ci.yml/badge.svg)](https://github.com/Balanov/mcp-attest/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/mcp-attest.svg)](https://pypi.org/project/mcp-attest/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-attest.svg)](https://pypi.org/project/mcp-attest/)
+[![License](https://img.shields.io/pypi/l/mcp-attest.svg)](LICENSE)
+
 **Prove that your MCP policy actually enforces.**
 
 `mcp-attest` is a conformance and attestation harness for agent access control.
