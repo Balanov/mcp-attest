@@ -4,15 +4,29 @@
 
 ### Added
 
+- Nothing yet: the next release starts from the 1.1.0 line.
+
+## [1.1.0] - 2026-11-14
+
+The OTLP reader contributed in #3 now works from the command line. A team that
+already emits OpenTelemetry GenAI spans can check them against its policy
+without building a second instrumentation path.
+
+### Added
+
 - `attest check --otlp PATH` reads the trace from an OpenTelemetry export
-  instead of a JSONL trace file, so a team that already emits OTel GenAI spans
-  can check them against its policy without adding a second instrumentation
-  path. The reader was contributed in #3; this wires it into the command line.
+  instead of a JSONL trace file. The reader takes a single OTLP JSON payload
+  or newline-delimited payloads, and skips spans that are not MCP spans with a
+  warning. It understands `mcp.tool.call`, `mcp.tools.list`,
+  `mcp.client.servers` and `mcp.gateway.route`; the README documents the
+  span contract.
+- CI now runs on the `develop` branch as well, so the development line is
+  verified before it reaches a release.
 
 ### Fixed
 
 - The OTLP reader merged in #3 was only reachable as a library. `attest check`
-  now accepts it, and the two sources are mutually exclusive.
+  now accepts it, and `--trace` and `--otlp` are mutually exclusive.
 
 
 All notable changes to this project are documented in this file.
