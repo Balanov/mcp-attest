@@ -297,6 +297,13 @@ python -m unittest discover -s tests -v
 
 The suite starts real MCP servers — one over stdio, one over HTTP, one with broken token checks, one with a full OAuth layer where every check can be switched off on its own — and asserts on what the harness finds. CI runs it on Python 3.10–3.13 and publishes to PyPI from a tagged release through trusted publishing, with no API token in the repository.
 
+## Related projects
+
+- [uncut](https://github.com/Balanov/uncut) — the lossless, headless coding-agent harness.
+- [verdict](https://github.com/Balanov/verdict) — a local semantic verifier for agent tool calls.
+- [latch](https://github.com/Balanov/latch) — one tiny HTTPS contract between any agent and any service.
+
+
 ## License
 
 [MIT](LICENSE). Fork it, modify it, embed it, ship it.
