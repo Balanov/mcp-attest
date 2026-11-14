@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MCP-ATTEST — prove the policy enforces</title>
-  <meta name="description" content="Conformance and attestation harness for MCP agent access control. Nine checks, offline, zero dependencies, MIT." />
+  <meta name="description" content="Conformance harness for MCP agent access control: test a live server against your own policy, as every identity, and hand an auditor evidence they can verify." />
   <meta property="og:title" content="MCP-ATTEST — prove your MCP policy enforces" />
-  <meta property="og:description" content="Take the policy you wrote and the trace of what happened, and see every point where they disagree. Nine checks, offline, MIT." />
+  <meta property="og:description" content="Point it at a live MCP server. It connects as every identity in your policy and reports every place where the server's decision differs from the one your policy requires." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://balanov.pro/mcp-attest/" />
   <meta property="og:image" content="https://opengraph.githubassets.com/1/Balanov/mcp-attest" />
@@ -16,26 +16,28 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f7f7f5;
+      --bg: #f6f7f4;
       --panel: #ffffff;
-      --ink: #12141a;
-      --muted: #5a6270;
-      --faint: #8b93a1;
-      --line: #e5e6ea;
+      --ink: #101318;
+      --muted: #5b6472;
+      --faint: #8d95a3;
+      --line: #e3e5e8;
+      --line-soft: #edefee;
       --accent: #0d8f63;
       --accent-soft: #e2f4ec;
+      --danger: #c8453a;
+      --danger-soft: #fbeae8;
+      --amber: #a9720a;
       --navy: #0d1526;
       --navy-line: #1d2942;
       --navy-ink: #e9edf6;
       --navy-muted: #8c9ab5;
+      --navy-green: #2fd9a6;
+      --navy-red: #ff7a6e;
       --btn-bg: #ffffff;
       --mono: "IBM Plex Mono", Consolas, monospace;
       --term-bg: #0b0e14;
-      --term-ink: #e9edf3;
-      --term-dim: #78839a;
-      --term-green: #2fd9a6;
-      --term-red: #ff6b60;
-      --term-amber: #f5b942;
+      --radius: 14px;
       color-scheme: light;
     }
     [data-theme="dark"] {
@@ -45,34 +47,50 @@
       --muted: #9ba19c;
       --faint: #6b726d;
       --line: #24282b;
+      --line-soft: #1c1f22;
       --accent: #2fd9a6;
       --accent-soft: #16261f;
+      --danger: #ff7a6e;
+      --danger-soft: #2a1614;
+      --amber: #e0a33c;
       --navy: #0e131d;
       --navy-line: #1e2637;
       --navy-ink: #e9edf6;
       --navy-muted: #8c9ab5;
+      --navy-green: #2fd9a6;
+      --navy-red: #ff7a6e;
       --btn-bg: #1a1d20;
       color-scheme: dark;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0; background: var(--bg); color: var(--ink);
       font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
       font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased;
       transition: background 200ms ease-out, color 200ms ease-out;
     }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
     ::selection { background: var(--accent-soft); }
+    h1, h2, h3 { letter-spacing: -0.02em; }
+    code { font-family: var(--mono); }
 
-    header.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; gap: 16px; border-bottom: 1px solid var(--line); }
+    /* ---------- top bar ---------- */
+    header.top {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 0; border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(10px);
+    }
     .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font: 600 15px var(--mono); letter-spacing: 0.12em; }
     .brand:hover { text-decoration: none; }
     .brand svg { width: 20px; height: 20px; }
     .ver { font: 500 11px var(--mono); color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; letter-spacing: 0.06em; }
-    .top-right { display: flex; align-items: center; gap: 14px; }
+    .top-right { display: flex; align-items: center; gap: 12px; }
     .nav { display: flex; gap: 20px; }
     .nav a { color: var(--muted); font-size: 14px; }
     .nav a:hover { color: var(--ink); text-decoration: none; }
@@ -101,169 +119,297 @@
     [data-theme="light"] .icon-moon { display: none; }
     [data-theme="dark"] .icon-sun { display: none; }
 
-    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; padding: 60px 0 0; }
-    .kicker { display: inline-flex; align-items: center; gap: 9px; font: 500 12px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 20px; }
-    .kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-    h1 { font: 600 clamp(40px, 5.2vw, 66px)/1.04 var(--sans, "IBM Plex Sans"), sans-serif; letter-spacing: -0.03em; margin: 0 0 22px; }
-    .tagline { font-size: 19px; color: var(--muted); margin: 0 0 28px; max-width: 540px; }
-    .tagline b { color: var(--ink); font-weight: 600; }
-    .hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .install {
-      display: inline-flex; align-items: center; gap: 12px; max-width: 100%;
-      background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 6px 6px 6px 16px;
+    /* ---------- buttons ---------- */
+    .btn {
+      display: inline-flex; align-items: center; gap: 9px; border-radius: 9px;
+      padding: 11px 18px; font: 500 14px "IBM Plex Sans", sans-serif; cursor: pointer;
+      border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+      transition: transform 160ms ease-out, border-color 160ms ease-out, background 160ms ease-out;
     }
-    .install code { font: 400 13.5px var(--mono); color: var(--ink); white-space: nowrap; }
+    .btn:hover { text-decoration: none; transform: translateY(-2px); border-color: var(--faint); }
+    .btn:active { transform: translateY(0); }
+    .btn svg { width: 17px; height: 17px; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { border-color: var(--accent); filter: brightness(1.06); }
+    [data-theme="dark"] .btn-primary { color: #07120d; }
+    .install {
+      display: inline-flex; align-items: center; gap: 10px; max-width: 100%;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 6px 6px 6px 14px;
+    }
+    .install code { font: 400 13px var(--mono); color: var(--ink); white-space: nowrap; }
     .install .dollar { color: var(--faint); user-select: none; }
     .copy-btn {
       appearance: none; border: 1px solid var(--line); background: var(--btn-bg); color: var(--muted);
       border-radius: 6px; font: 500 12px var(--mono); padding: 8px 12px; cursor: pointer;
-      transition: color 150ms; flex-shrink: 0;
+      transition: color 150ms, border-color 150ms; flex-shrink: 0;
     }
     .copy-btn:hover { color: var(--ink); border-color: var(--faint); }
     .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--btn-bg);
-      color: var(--ink); border-radius: 9px; padding: 11px 16px; font: 500 13.5px var(--mono); transition: border-color 150ms, color 150ms;
+
+    /* ---------- hero ---------- */
+    .hero { display: grid; grid-template-columns: 1.08fr 1fr; gap: 48px; align-items: center; padding: 64px 0 8px; }
+    .oss-pill {
+      display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line);
+      background: var(--panel); border-radius: 999px; padding: 6px 14px 6px 11px;
+      font: 500 12px var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
     }
-    .btn:hover { border-color: var(--faint); text-decoration: none; }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .btn.primary:hover { filter: brightness(1.06); }
-    .facts { display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 30px 0 0; padding: 0; list-style: none; font: 400 13px var(--mono); color: var(--muted); }
-    .facts li { position: relative; padding-left: 16px; }
-    .facts li::before { content: ""; position: absolute; left: 0; top: 9px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .oss-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+    h1 { font: 600 clamp(38px, 4.9vw, 60px)/1.05 "IBM Plex Sans", sans-serif; letter-spacing: -0.03em; margin: 22px 0 20px; }
+    .hero-lead { font-size: 18px; color: var(--muted); margin: 0 0 28px; max-width: 560px; }
+    .hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hero-meta { margin-top: 18px; font: 400 13px var(--mono); color: var(--faint); }
+    .hero-facts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 22px; font: 400 13.5px var(--mono); color: var(--muted); }
+    .hero-facts span { display: inline-flex; align-items: center; gap: 8px; }
+    .hero-facts span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 
-    .card { background: var(--navy); border: 1px solid var(--navy-line); border-radius: 16px; overflow: hidden; color: var(--navy-ink); }
-    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--navy-line); }
-    .card-head .label { font: 500 11.5px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-muted); }
-    .gap { display: grid; grid-template-columns: 132px 1fr; gap: 14px 16px; align-items: center; padding: 20px 22px; border-bottom: 1px solid var(--navy-line); }
-    .gap .k { font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy-muted); }
-    .gap .v { font: 400 14px var(--mono); }
-    .gap .v.ok { color: #7fe7c4; }
-    .gap .v.bad { color: var(--term-red); }
-    .gap .v.full { grid-column: 1 / -1; }
-    .chip { display: inline-block; background: rgba(255,107,96,.12); border: 1px solid rgba(255,107,96,.45); color: var(--term-red); font: 500 12.5px var(--mono); padding: 8px 14px; border-radius: 7px; }
-    .terminal-body { padding: 20px 22px 24px; font: 400 13px/1.75 var(--mono); min-height: 260px; white-space: pre-wrap; word-break: break-word; color: var(--term-ink); }
-    .terminal-body .prompt { color: var(--term-green); }
-    .terminal-body .dim { color: var(--term-dim); }
-    .terminal-body .ok { color: var(--term-green); }
-    .terminal-body .crit { color: var(--term-red); }
-    .terminal-body .warn { color: var(--term-amber); }
-    .cursor { display: inline-block; width: 8px; height: 15px; background: var(--term-green); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
-
-    section { padding: 72px 0 0; }
-    h2 { font: 500 13px var(--mono); color: var(--faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 30px; }
-    h2 a { color: var(--faint); }
-    h2 a:hover { color: var(--accent); }
-
-    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
-    .flow .item { border-top: 2px solid var(--accent); padding-top: 18px; }
-    .flow .n { font: 500 11.5px var(--mono); letter-spacing: 0.16em; color: var(--faint); }
-    .flow .t { font: 600 16px var(--mono); color: var(--ink); margin-top: 10px; }
-    .flow .d { font-size: 14.5px; color: var(--muted); margin-top: 8px; }
-    .also { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px 18px; margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
-    .also .t { font: 500 11.5px var(--mono); letter-spacing: 0.16em; color: var(--faint); }
-    .also code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-size: 13px; color: var(--ink); }
-    .also .d { font-size: 14.5px; color: var(--muted); }
-    .posture { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
-    .posture .big .n { display: block; font: 500 42px var(--mono); color: var(--accent); letter-spacing: -0.01em; }
-    .posture .big .d { display: block; font-size: 15px; color: var(--muted); margin-top: 12px; max-width: 42ch; }
-    .posture .note { font: 400 13px var(--mono); color: var(--faint); margin-top: 30px; }
-
-    .checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .check { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
-    .check .id { font: 600 12px var(--mono); color: var(--accent); letter-spacing: 0.08em; }
-    .check .n { font: 500 14px var(--mono); color: var(--ink); margin-top: 8px; }
-    .check .d { font-size: 14px; color: var(--muted); margin-top: 6px; }
-
-    .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
-    .steps { counter-reset: step; display: grid; gap: 16px; }
-    .step { display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: start; }
-    .step .n { font: 600 12.5px var(--mono); color: var(--accent); border: 1px solid var(--line); border-radius: 7px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-    .step .t { font: 500 15px var(--mono); color: var(--ink); }
-    .step .d { font-size: 14.5px; color: var(--muted); margin-top: 2px; }
-    .step code, .code code { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
-    .code { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; overflow-x: auto; }
-    .code pre { margin: 0; font: 400 12.5px/1.7 var(--mono); color: var(--muted); }
-
-    .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .why a.card2 {
-      display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; color: var(--ink);
+    /* ---------- the interactive demo ---------- */
+    .demo {
+      background: var(--term-bg); border: 1px solid var(--navy-line); border-radius: 16px;
+      box-shadow: 0 24px 60px -30px rgba(8, 12, 20, 0.55); overflow: hidden;
+      font-family: var(--mono);
     }
-    .why a.card2:hover { border-color: var(--faint); text-decoration: none; }
-    .why .src { font: 500 11.5px var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; }
-    .why .quote { margin: 9px 0 0; font-size: 14.5px; color: var(--muted); }
-    .honest { margin-top: 20px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-    .honest p { margin: 0; font-size: 14.5px; color: var(--muted); }
-    .honest a { color: var(--accent); }
-
-    .spec-row { display: flex; flex-wrap: wrap; gap: 12px 30px; font: 400 13.5px var(--mono); color: var(--muted); padding: 4px 0 0; }
-    .spec-row b { color: var(--ink); font-weight: 500; }
-
-    details.cite { margin-top: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-    details.cite summary {
-      cursor: pointer; list-style: none; padding: 14px 18px; font: 500 13px var(--mono); color: var(--muted);
-      display: flex; justify-content: space-between; align-items: center; transition: color 150ms;
+    .demo-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--navy-line); background: #0e1320;
     }
-    details.cite summary:hover { color: var(--ink); }
-    details.cite summary::-webkit-details-marker { display: none; }
-    details.cite summary .plus { color: var(--faint); transition: transform 200ms; }
-    details.cite[open] summary .plus { transform: rotate(45deg); }
-    .cite-body { position: relative; padding: 0 18px 18px; }
-    .cite-body pre { margin: 0; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 400 12.5px/1.7 var(--mono); overflow-x: auto; color: var(--muted); }
-    .cite-body .copy-btn { position: absolute; top: 22px; right: 26px; }
+    .demo-title { display: inline-flex; align-items: center; gap: 9px; font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-muted); }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--navy-green); animation: pulse 1.9s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.72); } }
+    .demo-state {
+      font: 600 11px var(--mono); letter-spacing: 0.14em; color: var(--navy-green);
+      border: 1px solid rgba(47, 217, 166, 0.32); background: rgba(47, 217, 166, 0.08);
+      border-radius: 999px; padding: 4px 11px; transition: color 200ms ease-out, border-color 200ms ease-out, background 200ms ease-out;
+    }
+    .demo-state.is-bad { color: var(--navy-red); border-color: rgba(255, 122, 110, 0.34); background: rgba(255, 122, 110, 0.09); }
+    .demo-body { padding: 14px 16px 0; height: 172px; display: flex; align-items: center; }
+    .demo-panel { display: none; width: 100%; animation: rise 260ms ease-out both; }
+    .demo-panel.is-active { display: block; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .demo-rows { display: grid; gap: 9px; }
+    .demo-row { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: baseline; }
+    .demo-key { font: 500 10.5px var(--mono); letter-spacing: 0.12em; color: var(--navy-muted); }
+    .demo-row code { font-size: 13px; color: var(--navy-ink); word-break: break-word; }
+    .demo-row code .deny { color: var(--navy-red); }
+    .demo-row code .allow { color: var(--navy-green); }
+    .demo-pre {
+      margin: 0; font-size: 13px; line-height: 1.75; color: var(--navy-ink);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .demo-pre .arrow { color: var(--navy-muted); }
+    .demo-pre .bad { color: var(--navy-red); }
+    .demo-pre .good { color: var(--navy-green); }
+    .demo-finding {
+      border: 1px solid rgba(255, 122, 110, 0.3); background: rgba(255, 122, 110, 0.07);
+      border-radius: 10px; padding: 13px 15px;
+    }
+    .demo-finding .id { font: 600 13px var(--mono); color: var(--navy-red); }
+    .demo-finding .sev { font: 500 11px var(--mono); letter-spacing: 0.12em; color: var(--navy-red); margin-left: 8px; }
+    .demo-finding .what { margin-top: 6px; font-size: 13px; color: var(--navy-ink); }
+    .demo-explain { margin: 0; padding: 0 16px 14px; font: 400 13px/1.6 "IBM Plex Sans", sans-serif; color: var(--navy-muted); min-height: 56px; }
+    .demo-action {
+      appearance: none; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      border: 0; border-top: 1px solid var(--navy-line); background: rgba(255, 255, 255, 0.03); color: var(--navy-ink);
+      font: 500 13.5px "IBM Plex Sans", sans-serif; text-align: left; padding: 14px 16px; cursor: pointer;
+      transition: background 160ms ease-out;
+    }
+    .demo-action:hover { background: rgba(255, 255, 255, 0.07); }
+    .demo-action svg { width: 18px; height: 18px; color: var(--navy-green); flex-shrink: 0; transition: transform 160ms ease-out; }
+    .demo-action:hover svg { transform: translateX(3px); }
+    .demo-foot {
+      display: flex; gap: 22px; flex-wrap: wrap; padding: 11px 16px;
+      border-top: 1px solid var(--navy-line); background: #0e1320;
+      font: 400 11.5px var(--mono); color: var(--navy-muted);
+    }
+    .demo-foot b { color: var(--navy-ink); font-weight: 500; }
+    .demo-note { margin-left: auto; color: #5f6b85; }
 
-    footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 24px 0 36px; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; font: 400 12.5px var(--mono); color: var(--faint); }
-    footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
-    footer a { color: var(--muted); }
-    footer a:hover { color: var(--accent); text-decoration: none; }
+    /* ---------- sections ---------- */
+    .section { padding: 74px 0; border-top: 1px solid var(--line); }
+    .section-intro { max-width: 760px; margin-bottom: 38px; }
+    .section-intro h2 { font: 600 clamp(26px, 3.1vw, 38px)/1.16 "IBM Plex Sans", sans-serif; margin: 0 0 14px; }
+    .section-intro p { color: var(--muted); font-size: 17px; margin: 0; max-width: 68ch; }
+    .section-chip {
+      display: inline-block; font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--accent); border: 1px solid var(--accent-soft); background: var(--accent-soft);
+      border-radius: 999px; padding: 5px 12px; margin-bottom: 16px;
+    }
 
-    @media (max-width: 1040px) {
-      .hero { grid-template-columns: 1fr; gap: 36px; }
-      .checks, .why, .flow { grid-template-columns: repeat(2, 1fr); }
-      .cols2 { grid-template-columns: 1fr; gap: 36px; }
+    /* artifacts */
+    .artifact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .artifact {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 22px; display: flex; flex-direction: column; gap: 10px;
+      transition: transform 180ms ease-out, border-color 180ms ease-out;
+    }
+    .artifact:hover { transform: translateY(-3px); border-color: var(--faint); }
+    .artifact h3 { margin: 4px 0 0; font: 600 18px/1.3 "IBM Plex Sans", sans-serif; }
+    .artifact p { margin: 0; color: var(--muted); font-size: 15px; }
+    .artifact code { font-size: 13px; color: var(--accent); }
+    .artifact-visual { height: 86px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .vis-sarif { display: grid; gap: 6px; width: 78%; }
+    .vis-sarif .bar { height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
+    .vis-sarif .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); }
+    .vis-sarif .bar.crit i { background: var(--danger); }
+    .vis-sarif .bar.warn i { background: var(--amber); }
+    .vis-chain { display: flex; align-items: center; gap: 6px; }
+    .vis-chain .link { width: 42px; height: 30px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); display: flex; align-items: center; justify-content: center; font: 500 10px var(--mono); color: var(--faint); }
+    .vis-chain .link.hot { border-color: var(--accent); color: var(--accent); }
+    .vis-chain .arrow { color: var(--faint); font: 400 12px var(--mono); }
+    .vis-suite { display: flex; align-items: center; gap: 12px; font: 500 12px var(--mono); color: var(--muted); }
+    .vis-suite .braces { font-size: 30px; color: var(--accent); line-height: 1; }
+    .vis-suite .tag { border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; background: var(--panel); }
+    .proof-line {
+      margin-top: 22px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      font: 400 13px var(--mono); color: var(--muted);
+    }
+
+    /* use cases */
+    .use-case-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px 48px; }
+    .use-case-list article { border-top: 1px solid var(--line); padding-top: 18px; }
+    .use-case-list h3 { margin: 0 0 8px; font: 600 18px/1.35 "IBM Plex Sans", sans-serif; }
+    .use-case-list p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+    /* how it works */
+    .how { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 56px; align-items: start; }
+    .workflow-code { display: grid; gap: 14px; }
+    .code-step { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+    .code-step-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 15px; border-bottom: 1px solid var(--line); }
+    .code-step-head span { font: 600 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+    .code-step-head code { font: 400 12px var(--mono); color: var(--faint); }
+    .code-step pre { margin: 0; padding: 14px 15px; font: 400 13px/1.6 var(--mono); color: var(--ink); white-space: pre-wrap; overflow-x: auto; }
+    .code-step small { display: block; padding: 0 15px 13px; color: var(--muted); font-size: 13.5px; }
+    .arrow-link { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+    .arrow-link::after { content: "→"; transition: transform 160ms ease-out; }
+    .arrow-link:hover { text-decoration: none; }
+    .arrow-link:hover::after { transform: translateX(3px); }
+
+    /* rules */
+    .rule-families { columns: 2; column-gap: 22px; }
+    .family { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 20px 22px; break-inside: avoid; margin-bottom: 22px; }
+    .family-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .family-head h3 { margin: 0; font: 600 16px "IBM Plex Sans", sans-serif; }
+    .family-head span { font: 500 12px var(--mono); color: var(--faint); }
+    .rule-row { display: grid; grid-template-columns: 128px 1fr; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line-soft); align-items: baseline; }
+    .rule-row:first-of-type { border-top: 0; }
+    .rule-row code { font: 500 12px var(--mono); color: var(--accent); }
+    .rule-row span { font-size: 14px; color: var(--muted); }
+
+    /* measurement */
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .metric { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 24px 22px; }
+    .metric strong { display: block; font: 600 42px/1.1 "IBM Plex Sans", sans-serif; letter-spacing: -0.02em; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .metric span { display: block; margin-top: 10px; font-size: 15px; color: var(--muted); }
+    .metric small { display: block; margin-top: 8px; font: 400 12.5px var(--mono); color: var(--faint); }
+    details.method { margin-top: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 0 20px; }
+    details.method summary { cursor: pointer; padding: 15px 0; font-weight: 500; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+    details.method summary::-webkit-details-marker { display: none; }
+    details.method summary::after { content: "+"; color: var(--faint); font: 500 18px var(--mono); }
+    details.method[open] summary::after { content: "−"; }
+    details.method p { margin: 0 0 14px; color: var(--muted); font-size: 15px; max-width: 78ch; }
+    details.method .warning { border-left: 3px solid var(--amber); padding-left: 13px; }
+    .evidence-links { display: flex; gap: 18px; flex-wrap: wrap; padding-bottom: 16px; font: 500 13.5px var(--mono); }
+
+    /* faq */
+    .faq-list { display: grid; gap: 0; max-width: 900px; }
+    .faq-list details { border-top: 1px solid var(--line); }
+    .faq-list details:last-of-type { border-bottom: 1px solid var(--line); }
+    .faq-list summary { cursor: pointer; padding: 17px 0; font-weight: 500; font-size: 16.5px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+    .faq-list summary::-webkit-details-marker { display: none; }
+    .faq-list summary::after { content: "+"; color: var(--faint); font: 500 19px var(--mono); flex-shrink: 0; }
+    .faq-list details[open] summary::after { content: "−"; }
+    .faq-list p { margin: 0 0 18px; color: var(--muted); font-size: 15.5px; max-width: 80ch; }
+
+    /* honest comparison */
+    .honest { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 30px; }
+    .honest h2 { margin: 0 0 14px; font: 600 clamp(22px, 2.4vw, 28px)/1.25 "IBM Plex Sans", sans-serif; }
+    .honest p { margin: 0 0 14px; color: var(--muted); font-size: 16px; max-width: 82ch; }
+    .honest p:last-of-type { margin-bottom: 0; }
+    .honest b { color: var(--ink); font-weight: 600; }
+
+    /* final cta */
+    .final-cta { display: flex; align-items: center; justify-content: space-between; gap: 30px; flex-wrap: wrap; }
+    .final-cta h2 { margin: 0 0 8px; font: 600 clamp(24px, 2.8vw, 34px)/1.2 "IBM Plex Sans", sans-serif; }
+    .final-cta p { margin: 0; color: var(--muted); font-size: 16px; }
+    .final-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .install-command { display: inline-flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 6px 6px 6px 16px; }
+    .install-command code { font: 400 13.5px var(--mono); }
+
+    /* citation + footer */
+    .citation-wrap { padding: 0 0 40px; }
+    .citation { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 0 20px; }
+    .citation summary { cursor: pointer; padding: 14px 0; font-weight: 500; display: flex; justify-content: space-between; gap: 12px; list-style: none; }
+    .citation summary::-webkit-details-marker { display: none; }
+    .citation summary span:last-child { color: var(--faint); font: 500 18px var(--mono); }
+    .citation-body { padding-bottom: 16px; }
+    .citation-body pre { margin: 0 0 12px; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; font: 400 12.5px/1.6 var(--mono); overflow-x: auto; }
+    footer.footer { border-top: 1px solid var(--line); padding: 26px 0 42px; display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+    footer.footer .links { display: flex; gap: 20px; }
+
+    /* reveal on scroll */
+    .reveal { opacity: 0; transform: translateY(14px); transition: opacity 520ms ease-out, transform 520ms ease-out; }
+    .reveal.is-in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .live-dot { animation: none; }
+      * { transition-duration: 1ms !important; }
+    }
+
+    @media (max-width: 1000px) {
+      .hero { grid-template-columns: 1fr; gap: 40px; }
+      .how { grid-template-columns: 1fr; gap: 30px; }
+      .artifact-grid, .metric-grid { grid-template-columns: 1fr 1fr; }
+      .rule-families { columns: 1; }
+      .use-case-list { grid-template-columns: 1fr; gap: 20px; }
       .nav { display: none; }
     }
-    @media (max-width: 620px) {
-      .checks, .why, .flow { grid-template-columns: 1fr; }
-      .terminal-body { font-size: 11.5px; }
-      .install code { font-size: 12px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .cursor { animation: none; }
-      * { transition: none !important; }
+    @media (max-width: 720px) {
+      .artifact-grid, .metric-grid { grid-template-columns: 1fr; }
+      .wrap { padding: 0 20px; }
+      .rule-row { grid-template-columns: 1fr; gap: 2px; }
+      .demo-row { grid-template-columns: 1fr; gap: 2px; }
+      .demo-foot { flex-direction: column; gap: 6px; }
+      .brand { white-space: nowrap; letter-spacing: 0.06em; font-size: 13px; }
+      .gh-stat .label > span { display: none; }
+      .gh-stat .label { padding: 8px; }
+      .gh-stat .count { min-width: 26px; padding: 8px 6px; }
+      .top-right { gap: 8px; margin-left: auto; }
+      header.top { flex-wrap: wrap; row-gap: 12px; }
+      .lang-switch button { padding: 8px 9px; }
+      h1 { font-size: clamp(32px, 8vw, 44px); }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="top">
-      <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
-        <span>MCP-ATTEST</span>
-        <span class="ver">1.2.0</span>
+      <a class="brand" href="#top">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 10l18 9v11c0 11.6-7.4 21.2-18 25-10.6-3.8-18-13.4-18-25V19l18-9z" fill="none" stroke="#2fd9a6" stroke-width="4"/><path d="M23 32l6.5 6.5L41 26" fill="none" stroke="#2fd9a6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        MCP-ATTEST<span class="ver" id="ver-chip">1.2.1</span>
       </a>
+      <nav class="nav" aria-label="Main">
+        <a href="#artifacts" data-i18n="nav.get">What you get</a>
+        <a href="#how" data-i18n="nav.how">How it works</a>
+        <a href="#rules" data-i18n="nav.rules">Rules</a>
+        <a href="#measurement" data-i18n="nav.measure">Measurement</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
+      </nav>
       <div class="top-right">
-        <nav class="nav">
-          <a href="#checks" data-i18n="navRules">Rules</a>
-          <a href="#how" data-i18n="navHow">How it works</a>
-          <a href="#ci" data-i18n="navCi">CI</a>
-        </nav>
         <div class="gh-stats">
-          <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/stargazers" aria-label="Star MCP-ATTEST on GitHub">
-            <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><span data-i18n="star">Star</span></span>
-            <span class="count" id="gh-stars">0</span>
+          <a class="gh-stat" href="https://github.com/Balanov/mcp-attest" rel="noopener">
+            <span class="label"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .3C5.4.3 0 5.7 0 12.3c0 5.3 3.4 9.8 8.2 11.4.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v5.1c0 .3.2.7.8.6 4.8-1.6 8.2-6.1 8.2-11.4C24 5.7 18.6.3 12 .3Z"/></svg><span data-i18n="gh.stars">Stars</span></span>
+            <span class="count" id="gh-stars">—</span>
           </a>
-          <a class="gh-stat" href="https://github.com/Balanov/mcp-attest/forks" aria-label="Fork MCP-ATTEST on GitHub">
-            <span class="label"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg><span data-i18n="fork">Fork</span></span>
-            <span class="count" id="gh-forks">0</span>
+          <a class="gh-stat" href="https://github.com/Balanov/mcp-attest" rel="noopener">
+            <span class="label"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.36 1.09 2.94.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg><span data-i18n="gh.forks">Forks</span></span>
+            <span class="count" id="gh-forks">—</span>
           </a>
         </div>
-        <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Switch theme / Переключить тему" title="Light / dark">
-          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         </button>
-        <div class="lang-switch" role="group" aria-label="Language / Язык">
+        <div class="lang-switch" role="group" aria-label="Language">
           <button type="button" id="lang-en" aria-pressed="true">EN</button>
           <button type="button" id="lang-ru" aria-pressed="false">RU</button>
         </div>
@@ -271,179 +417,352 @@
     </header>
 
     <main>
-      <section class="hero">
-        <div class="hero-left">
-          <p class="kicker" data-i18n="kicker">Open source · MIT · no dependencies</p>
-          <h1 data-i18n="headline">Prove that your server denies what it must deny.</h1>
-          <p class="tagline" data-i18n="tagline">Point it at a live MCP server. It connects as every identity in your policy, sends the real calls, and reports every place where the server's decision differs from the one your policy requires.</p>
+      <!-- ================= hero ================= -->
+      <section class="hero" id="top">
+        <div class="hero-copy reveal">
+          <div class="oss-pill"><span class="dot"></span><span data-i18n="hero.badge">Open source · MIT · no dependencies</span></div>
+          <h1 data-i18n="hero.title">Prove that your server denies what it must deny.</h1>
+          <p class="hero-lead" data-i18n="hero.lead">Point it at a live MCP server. It connects as every identity in your policy, sends the calls your policy allows and forbids, and reports every place where the server's decision differs from the one your policy requires.</p>
           <div class="hero-actions">
             <div class="install">
-              <code><span class="dollar">$ </span>pipx install mcp-attest</code>
-              <button class="copy-btn" type="button" data-copy="install-cmd" data-i18n="copy">Copy</button>
+              <span class="dollar">$</span>
+              <code>pip install mcp-attest</code>
+              <button class="copy-btn" type="button" data-copy="pip install mcp-attest" data-i18n="copy">Copy</button>
             </div>
-            <span id="install-cmd" hidden>pipx install mcp-attest</span>
-            <a class="btn primary" href="https://github.com/Balanov/mcp-attest" data-i18n="ctaGit">GitHub</a>
-            <a class="btn" href="https://pypi.org/project/mcp-attest/" data-i18n="ctaPypi">PyPI</a>
+            <a class="btn" href="https://github.com/Balanov/mcp-attest" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .3C5.4.3 0 5.7 0 12.3c0 5.3 3.4 9.8 8.2 11.4.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v5.1c0 .3.2.7.8.6 4.8-1.6 8.2-6.1 8.2-11.4C24 5.7 18.6.3 12 .3Z"/></svg>GitHub</a>
+            <a class="btn" href="https://pypi.org/project/mcp-attest/" rel="noopener">PyPI</a>
           </div>
-          <ul class="facts">
-            <li data-i18n="f1">24 rules, OWASP-mapped</li>
-            <li data-i18n="f2">0 runtime dependencies</li>
-            <li data-i18n="f3">stdio + Streamable HTTP</li>
-            <li data-i18n="f4">No model, no telemetry</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <span class="label" data-i18n="cardTitle">The authorization gap</span>
-            <span class="label" data-i18n="cardCmd">attest test</span>
+          <div class="hero-meta" data-i18n="hero.meta">v1.2.1 · Python 3.10+ · 0 runtime dependencies · MIT</div>
+          <div class="hero-facts">
+            <span data-i18n="hero.f1">24 rules, OWASP-mapped</span>
+            <span data-i18n="hero.f2">stdio + Streamable HTTP</span>
+            <span data-i18n="hero.f3">No model, no telemetry</span>
           </div>
-          <div class="gap">
-            <div class="k" data-i18n="gapPolicy">Policy says</div>
-            <div class="v ok">alice &rarr; refund_order &rarr; deny</div>
-            <div class="k" data-i18n="gapServer">Server did</div>
-            <div class="v bad">alice &rarr; refund_order &rarr; allow</div>
-            <div class="k" data-i18n="gapHarness">mcp-attest</div>
-            <div class="v full"><span class="chip">AT-AUTHZ-001 CRITICAL · broken access control</span></div>
+        </div>
+
+        <!-- the interactive demo -->
+        <div class="demo reveal" id="demo" data-step="0">
+          <div class="demo-top">
+            <span class="demo-title"><i class="live-dot"></i><span data-i18n="demo.title">The enforcement gap</span></span>
+            <span class="demo-state" id="demo-state">POLICY</span>
           </div>
-          <div class="terminal-body" id="terminal-body" aria-hidden="true"></div>
-        </div>
-      </section>
+          <div class="demo-body">
+            <div class="demo-panel is-active" data-panel="0">
+              <div class="demo-rows">
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kPolicy">POLICY</span><code>alice &rarr; refund_order &rarr; <span class="deny">deny</span></code></div>
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kWho">IDENTITY</span><code>alice &middot; analyst &middot; tenant eu-1</code></div>
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kRule">RULE</span><code>AT-AUTHZ-001 &middot; policy per identity</code></div>
+              </div>
+            </div>
+            <div class="demo-panel" data-panel="1">
+              <div class="demo-rows">
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kIdent">IDENTITY</span><code>alice</code></div>
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kCred">CREDENTIALS</span><code>Bearer &lt;alice's own token&gt;</code></div>
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kTrans">TRANSPORT</span><code>streamable-http &middot; one session per identity</code></div>
+              </div>
+            </div>
+            <div class="demo-panel" data-panel="2">
+              <pre class="demo-pre" id="demo-call"><span class="arrow">&rarr;</span> tools/call  refund_order
+  {"order_id": 1042, "reason": "customer request"}
 
-      <section id="how">
-        <h2 data-i18n="howTitle">How it works</h2>
-        <div class="flow">
-          <div class="item"><div class="n">01</div><div class="t" data-i18n="h1t">POLICY</div><div class="d" data-i18n="h1d">Who may call what, and how each identity presents itself: headers or environment.</div></div>
-          <div class="item"><div class="n">02</div><div class="t" data-i18n="h2t">CONNECT</div><div class="d" data-i18n="h2d">One session per identity over stdio or Streamable HTTP. JSON-RPC spoken directly, no SDK.</div></div>
-          <div class="item"><div class="n">03</div><div class="t" data-i18n="h3t">CALL</div><div class="d" data-i18n="h3d">Every identity against every tool, with arguments derived from the tool's own schema.</div></div>
-          <div class="item"><div class="n">04</div><div class="t" data-i18n="h4t">FINDINGS</div><div class="d" data-i18n="h4d">A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.</div></div>
-        </div>
-        <div class="also">
-          <span class="t" data-i18n="alsoT">ALREADY EXPORTING OTEL?</span>
-          <code>attest check --policy policy.json --otlp export.json</code>
-          <span class="d" data-i18n="alsoD">The same policy, applied to the OpenTelemetry export you already produce.</span>
-        </div>
-        <div class="also">
-          <span class="t" data-i18n="also2T">WRITING IT ONCE?</span>
-          <code>attest suite export --policy policy.json --out suite.json</code>
-          <span class="d" data-i18n="also2D">A portable suite with a published schema: any harness can run your expectations.</span>
-        </div>
-      </section>
-
-      <section id="checks">
-        <h2 data-i18n="rulesTitle">Twenty-four rules</h2>
-        <div class="checks">
-          <div class="check"><div class="id">AT-AUTHZ-001</div><div class="n" data-i18n="r1n">policy per identity</div><div class="d" data-i18n="r1d">the server allows what your policy denies</div></div>
-          <div class="check"><div class="id">AT-AUTHZ-002</div><div class="n" data-i18n="r2n">cross-user objects</div><div class="d" data-i18n="r2d">a valid id belonging to another principal</div></div>
-          <div class="check"><div class="id">AT-TOKEN-001</div><div class="n" data-i18n="r3n">tokens validated</div><div class="d" data-i18n="r3d">a malformed, tampered or expired token gets through</div></div>
-          <div class="check"><div class="id">AT-POISON-001</div><div class="n" data-i18n="r4n">no hidden instructions</div><div class="d" data-i18n="r4d">instructions smuggled into tool metadata</div></div>
-          <div class="check"><div class="id">AT-DRIFT-001</div><div class="n" data-i18n="r5n">no manifest drift</div><div class="d" data-i18n="r5d">a tool added or changed after approval</div></div>
-          <div class="check"><div class="id">AT-SECRET-001</div><div class="n" data-i18n="r6n">no secrets in output</div><div class="d" data-i18n="r6d">a credential in the tool output</div></div>
-          <div class="check"><div class="id">AT-FAILCLOSED-001</div><div class="n" data-i18n="r7n">fail closed</div><div class="d" data-i18n="r7d">a call executed with missing arguments</div></div>
-          <div class="check"><div class="id">AT-INJECT-001</div><div class="n" data-i18n="r8n">no injected output</div><div class="d" data-i18n="r8d">instructions aimed at the model in a result</div></div>
-          <div class="check"><div class="id">AT-SINK-001</div><div class="n" data-i18n="r9n">guarded sinks</div><div class="d" data-i18n="r9d">model input reaching a shell, a file or a URL</div></div>
-          <div class="check"><div class="id">AT-SCHEMA-001</div><div class="n" data-i18n="r10n">strict schemas</div><div class="d" data-i18n="r10d">untyped, unbounded or free-form arguments</div></div>
-          <div class="check"><div class="id">AT-APPROVAL-001</div><div class="n" data-i18n="r11n">declared risk</div><div class="d" data-i18n="r11d">a state-changing tool with no risk declared</div></div>
-          <div class="check"><div class="id">AT-ERROR-001</div><div class="n" data-i18n="r12n">clean errors</div><div class="d" data-i18n="r12d">stack traces and internal paths in errors</div></div>
-          <div class="check"><div class="id">AT-OAUTH-001</div><div class="n" data-i18n="o1n">token required</div><div class="d" data-i18n="o1d">a request with no bearer token is accepted</div></div>
-          <div class="check"><div class="id">AT-OAUTH-002</div><div class="n" data-i18n="o2n">signature verified</div><div class="d" data-i18n="o2d">a tampered signature is accepted</div></div>
-          <div class="check"><div class="id">AT-OAUTH-003</div><div class="n" data-i18n="o3n">unsigned refused</div><div class="d" data-i18n="o3d">an alg: none token is accepted</div></div>
-          <div class="check"><div class="id">AT-OAUTH-004</div><div class="n" data-i18n="o4n">expiry enforced</div><div class="d" data-i18n="o4d">an expired token is accepted</div></div>
-          <div class="check"><div class="id">AT-OAUTH-005</div><div class="n" data-i18n="o5n">audience enforced</div><div class="d" data-i18n="o5d">a token for another resource is accepted</div></div>
-          <div class="check"><div class="id">AT-OAUTH-006</div><div class="n" data-i18n="o6n">issuer enforced</div><div class="d" data-i18n="o6d">a token from another issuer is accepted</div></div>
-          <div class="check"><div class="id">AT-OAUTH-007</div><div class="n" data-i18n="o7n">scope enforced</div><div class="d" data-i18n="o7d">a tool runs without the scope it needs</div></div>
-          <div class="check"><div class="id">AT-OAUTH-008</div><div class="n" data-i18n="o8n">resource metadata</div><div class="d" data-i18n="o8d">the refusal does not point at the metadata</div></div>
-          <div class="check"><div class="id">AT-OAUTH-009</div><div class="n" data-i18n="o9n">PKCE required</div><div class="d" data-i18n="o9d">a code is issued without an S256 challenge</div></div>
-          <div class="check"><div class="id">AT-OAUTH-010</div><div class="n" data-i18n="o10n">redirect validated</div><div class="d" data-i18n="o10d">a code is issued for an unregistered URI</div></div>
-          <div class="check"><div class="id">AT-OAUTH-011</div><div class="n" data-i18n="o11n">state echoed</div><div class="d" data-i18n="o11d">the authorization response drops the state</div></div>
-          <div class="check"><div class="id">AT-OAUTH-012</div><div class="n" data-i18n="o12n">no passthrough</div><div class="d" data-i18n="o12d">the upstream accepts a token made for this server</div></div>
-        </div>
-      </section>
-
-      <section id="posture">
-        <h2 data-i18n="postureTitle">What the registry looks like</h2>
-        <div class="posture">
-          <div class="big"><span class="n">45.8%</span><span class="d" data-i18n="p1d">of the servers in the official MCP registry that answered the handshake opened a session with no credentials at all</span></div>
-          <div class="big"><span class="n">189</span><span class="d" data-i18n="p2d">servers measured, every ninth of the 1,698 the registry lists: three well-formed requests each, and no tool call ever</span></div>
-        </div>
-        <p class="note" data-i18n="p3d">Measured by the tool itself, with the method published and no host names. Reproduce it with one command.</p>
-      </section>
-
-      <section id="ci">
-        <h2 data-i18n="useTitle">Use it in CI</h2>
-        <div class="cols2">
-          <div class="steps">
-            <div class="step"><div class="n">1</div><div><div class="t" data-i18n="s1t">Write the policy</div><div class="d" data-i18n="s1d"><code>attest init --command "python my_server.py"</code> scaffolds one from the live tool list. Default deny, one entry per identity.</div></div></div>
-            <div class="step"><div class="n">2</div><div><div class="t" data-i18n="s2t">Point it at the server</div><div class="d" data-i18n="s2d">stdio or Streamable HTTP. The harness connects as each identity and calls what the policy allows and forbids.</div></div></div>
-            <div class="step"><div class="n">3</div><div><div class="t" data-i18n="s3t">Gate the build</div><div class="d" data-i18n="s3d">The action fails on critical or high findings, and SARIF lands in code scanning next to the rest of the repository.</div></div></div>
-            <div class="step"><div class="n">4</div><div><div class="t" data-i18n="s4t">Keep the evidence</div><div class="d" data-i18n="s4d">A hash-chained, optionally signed bundle per run: request, response, identity, decision, timestamp.</div></div></div>
+<span class="arrow">&larr;</span> 200 OK
+  {"status": "<span class="allow">allowed</span>", "actor": "alice"}</pre>
+            </div>
+            <div class="demo-panel" data-panel="3">
+              <div class="demo-finding">
+                <div><span class="id">AT-AUTHZ-001</span><span class="sev">CRITICAL</span></div>
+                <div class="what" data-i18n="demo.findingWhat">The server allows what the policy denies.</div>
+              </div>
+              <div class="demo-rows" style="margin-top:14px">
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kPolicy">POLICY</span><code>alice &rarr; refund_order &rarr; <span class="deny">deny</span></code></div>
+                <div class="demo-row"><span class="demo-key" data-i18n="demo.kServer">SERVER</span><code>alice &rarr; refund_order &rarr; <span class="allow">allow</span></code></div>
+              </div>
+            </div>
           </div>
-          <div class="code">
-            <pre>- uses: Balanov/mcp-attest@v0
-  with:
-    policy: .attest/policy.json
-    command: "python my_server.py"
-    sarif: mcp-attest.sarif</pre>
+          <p class="demo-explain" id="demo-explain"></p>
+          <button class="demo-action" id="demo-action" type="button">
+            <span id="demo-action-label"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="demo-foot">
+            <span>SARIF <b id="demo-sarif">—</b></span>
+            <span>EVIDENCE <b id="demo-evidence">—</b></span>
+            <span class="demo-note" data-i18n="demo.note">Interactive model of one finding, not a live run</span>
           </div>
         </div>
       </section>
 
-      <section id="why">
-        <h2 data-i18n="whyTitle">Why it exists</h2>
-        <div class="why">
-          <a class="card2" href="https://kuberneteslab.dev/en/blog/agentgateway-mcp-enforcement/" target="_blank" rel="noopener">
-            <div class="src">OWASP · MCP Security Testing Guide</div>
-            <p class="quote" data-i18n="why1">"Security controls should be executable tests, not only checklist items." Its minimum automated test set starts with the authorization matrix: every tool, role, scope, tenant and object, including ids owned by another user.</p>
-          </a>
-          <a class="card2" href="https://pipelab.org/blog/state-of-mcp-security-2026/" target="_blank" rel="noopener">
-            <div class="src">agentgateway, own evaluation · October 2026</div>
-            <p class="quote" data-i18n="why2">"Turning a policy on is not the end of the job: send real calls and check."</p>
-          </a>
-          <a class="card2" href="https://www.nsa.gov/Portals/75/documents/Cybersecurity/CSI_MCP_SECURITY.pdf" target="_blank" rel="noopener">
-            <div class="src">NSA / CISA · MCP Security Design Considerations</div>
-            <p class="quote" data-i18n="why3">"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments."</p>
-          </a>
-        </div>
-        <div class="honest">
-          <p data-i18n="honest">MCP testing is crowded — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. What none of them does is the authorization matrix and token validation the OWASP guide puts first. This one does, offline and deterministically. <a href="https://github.com/Balanov/mcp-attest/blob/main/docs/POSITIONING.md" data-i18n="honestLink">Full comparison →</a></p>
+      <!-- ================= what you get ================= -->
+      <section class="section" id="artifacts">
+        <div class="wrap">
+          <div class="section-intro reveal">
+            <h2 data-i18n="art.title">A verdict you can put in front of anyone.</h2>
+            <p data-i18n="art.lead">Not a log you have to believe. Every finding arrives with the request, the response, the identity and the decision that differed — in a format your CI and your auditor already know.</p>
+          </div>
+          <div class="artifact-grid">
+            <article class="artifact reveal">
+              <div class="artifact-visual">
+                <div class="vis-sarif">
+                  <div class="bar crit"><i style="width:82%"></i></div>
+                  <div class="bar warn"><i style="width:54%"></i></div>
+                  <div class="bar"><i style="width:36%"></i></div>
+                </div>
+              </div>
+              <h3 data-i18n="art.sarif.t">SARIF for code scanning</h3>
+              <p data-i18n="art.sarif.b">The run writes a SARIF file, and the GitHub Action uploads it to code scanning, next to the rest of your repository's results.</p>
+              <code>attest test --sarif out.sarif</code>
+            </article>
+            <article class="artifact reveal">
+              <div class="artifact-visual">
+                <div class="vis-chain">
+                  <span class="link hot">req</span><span class="arrow">&rarr;</span>
+                  <span class="link">res</span><span class="arrow">&rarr;</span>
+                  <span class="link">dec</span>
+                </div>
+              </div>
+              <h3 data-i18n="art.evid.t">A hash-chained evidence bundle</h3>
+              <p data-i18n="art.evid.b">Request, response, identity, decision, timestamp — chained by hash and optionally signed, so anyone can check that nothing was edited afterwards.</p>
+              <code>attest test --evidence bundle.jsonl</code>
+            </article>
+            <article class="artifact reveal">
+              <div class="artifact-visual">
+                <div class="vis-suite">
+                  <span class="braces">{ }</span>
+                  <span class="tag">mcp-attest-suite</span>
+                  <span class="tag">v1</span>
+                </div>
+              </div>
+              <h3 data-i18n="art.suite.t">A portable suite</h3>
+              <p data-i18n="art.suite.b">Export your expectations as a suite with a published JSON Schema. Any harness can run them — this one is not the only reader of your policy.</p>
+              <code>attest suite export --policy policy.json</code>
+            </article>
+          </div>
+          <div class="proof-line reveal">
+            <span data-i18n="art.proof">80 tests in the release · the sdist from PyPI runs its own tests · zero telemetry</span>
+            <a href="https://github.com/Balanov/mcp-attest/blob/main/docs/ADOPT.md" data-i18n="art.adopt">Read the 60-second guide</a>
+          </div>
         </div>
       </section>
 
-      <section id="specs">
-        <div class="spec-row">
-          <span><b>12</b> <span data-i18n="sp1">rules</span></span>
-          <span><b>0</b> <span data-i18n="sp2">dependencies</span></span>
-          <span><b>stdio + HTTP</b> <span data-i18n="sp3">transports</span></span>
-          <span><b>Python 3.10+</b></span>
-          <span><b>MIT</b></span>
+      <!-- ================= where it saves your day ================= -->
+      <section class="section">
+        <div class="wrap">
+          <div class="section-intro reveal">
+            <h2 data-i18n="uses.title">Where it saves your day.</h2>
+          </div>
+          <div class="use-case-list">
+            <article class="reveal">
+              <h3 data-i18n="uses.review.t">The review that never happens</h3>
+              <p data-i18n="uses.review.b">Every change to an MCP server changes what that server may do. Run it against your policy before it merges, and let the build fail when the answer differs.</p>
+            </article>
+            <article class="reveal">
+              <h3 data-i18n="uses.inherit.t">The server you inherited</h3>
+              <p data-i18n="uses.inherit.b">You did not write the server and nobody wrote the policy. <code>attest init</code> reads the live tool list and scaffolds a default-deny policy you can then argue with.</p>
+            </article>
+            <article class="reveal">
+              <h3 data-i18n="uses.vendor.t">The vendor's server</h3>
+              <p data-i18n="uses.vendor.b">Point the harness at somebody else's MCP server and at the policy you require. It reports where that server deviates, with the evidence you need to send along.</p>
+            </article>
+            <article class="reveal">
+              <h3 data-i18n="uses.incident.t">The incident review</h3>
+              <p data-i18n="uses.incident.b">You already export OpenTelemetry. <code>attest check --otlp</code> replays that export against the policy and shows which calls would not have been allowed.</p>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section id="cite">
-        <details class="cite">
-          <summary><span data-i18n="citeTitle">Cite this work — BibTeX</span><span class="plus">+</span></summary>
-          <div class="cite-body">
-            <button class="copy-btn" type="button" data-copy="bibtex" data-i18n="copy">Copy</button>
-            <pre id="bibtex">@misc{balanov2026mcpattest,
-  title  = {MCP-ATTEST: Authorization Conformance Harness for MCP Servers},
-  author = {Balanov, Anton},
-  year   = {2026},
+      <!-- ================= how it works ================= -->
+      <section class="section" id="how">
+        <div class="wrap how">
+          <div class="reveal">
+            <span class="section-chip" data-i18n="how.chip">Four commands</span>
+            <h2 style="font:600 clamp(26px,3.1vw,38px)/1.16 'IBM Plex Sans',sans-serif;margin:0 0 14px" data-i18n="how.title">From an empty policy to a verdict.</h2>
+            <p style="color:var(--muted);font-size:17px;margin:0 0 22px;max-width:52ch" data-i18n="how.body">No plugin for your language, no service to configure, no model in the loop. A policy file and a server address.</p>
+            <a class="arrow-link" href="https://github.com/Balanov/mcp-attest/blob/main/docs/ADOPT.md" data-i18n="how.link">Read the full quick start</a>
+          </div>
+          <div class="workflow-code reveal">
+            <div class="code-step">
+              <div class="code-step-head"><span data-i18n="how.s1t">Write the policy</span><code>policy.json</code></div>
+              <pre>attest init --command "python my_server.py"</pre>
+              <small data-i18n="how.s1d">Scaffolds one from the live tool list. Default deny, one entry per identity.</small>
+            </div>
+            <div class="code-step">
+              <div class="code-step-head"><span data-i18n="how.s2t">Point it at the server</span><code>stdio · streamable-http</code></div>
+              <pre>attest test --url https://mcp.example.com/mcp --policy policy.json</pre>
+              <small data-i18n="how.s2d">The harness connects as each identity and calls what the policy allows and forbids.</small>
+            </div>
+            <div class="code-step">
+              <div class="code-step-head"><span data-i18n="how.s3t">Gate the build</span><code>exit code</code></div>
+              <pre>attest check --policy policy.json --trace trace.jsonl</pre>
+              <small data-i18n="how.s3d">A blocking exit code, SARIF for code scanning, a hash-chained evidence bundle.</small>
+            </div>
+            <div class="code-step">
+              <div class="code-step-head"><span data-i18n="how.s4t">Keep the expectations</span><code>suite.json</code></div>
+              <pre>attest suite export --policy policy.json --out suite.json</pre>
+              <small data-i18n="how.s4d">A portable suite with a published schema: any harness can run your expectations.</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= rules ================= -->
+      <section class="section" id="rules">
+        <div class="wrap">
+          <div class="section-intro reveal">
+            <h2 data-i18n="rules.title">Twenty-four rules, in five families.</h2>
+            <p data-i18n="rules.lead">Each rule states what the server did that it must not do. The OAuth half maps to the OWASP guide's authentication and authorization tests; the rest covers what a tool description and a tool result can still get wrong.</p>
+          </div>
+          <div class="rule-families">
+            <div class="family reveal">
+              <div class="family-head"><h3 data-i18n="fam.authz.t">Authorization</h3><span>2</span></div>
+              <div class="rule-row"><code>AT-AUTHZ-001</code><span data-i18n="r.authz1">the server allows what your policy denies</span></div>
+              <div class="rule-row"><code>AT-AUTHZ-002</code><span data-i18n="r.authz2">a valid id belonging to another principal</span></div>
+            </div>
+            <div class="family reveal">
+              <div class="family-head"><h3 data-i18n="fam.token.t">Tokens and OAuth</h3><span>13</span></div>
+              <div class="rule-row"><code>AT-TOKEN-001</code><span data-i18n="r.token1">a malformed, tampered or expired token gets through</span></div>
+              <div class="rule-row"><code>AT-OAUTH-001</code><span data-i18n="r.oauth1">a request with no bearer token is accepted</span></div>
+              <div class="rule-row"><code>AT-OAUTH-002</code><span data-i18n="r.oauth2">a tampered signature is accepted</span></div>
+              <div class="rule-row"><code>AT-OAUTH-003</code><span data-i18n="r.oauth3">an alg: none token is accepted</span></div>
+              <div class="rule-row"><code>AT-OAUTH-004</code><span data-i18n="r.oauth4">an expired token is accepted</span></div>
+              <div class="rule-row"><code>AT-OAUTH-005</code><span data-i18n="r.oauth5">a token for another resource is accepted</span></div>
+              <div class="rule-row"><code>AT-OAUTH-006</code><span data-i18n="r.oauth6">a token from another issuer is accepted</span></div>
+              <div class="rule-row"><code>AT-OAUTH-007</code><span data-i18n="r.oauth7">a tool runs without the scope it needs</span></div>
+              <div class="rule-row"><code>AT-OAUTH-008</code><span data-i18n="r.oauth8">the refusal does not point at the resource metadata</span></div>
+              <div class="rule-row"><code>AT-OAUTH-009</code><span data-i18n="r.oauth9">a code is issued without an S256 challenge</span></div>
+              <div class="rule-row"><code>AT-OAUTH-010</code><span data-i18n="r.oauth10">a code is issued for an unregistered URI</span></div>
+              <div class="rule-row"><code>AT-OAUTH-011</code><span data-i18n="r.oauth11">the authorization response drops the state</span></div>
+              <div class="rule-row"><code>AT-OAUTH-012</code><span data-i18n="r.oauth12">the upstream accepts a token made for this server</span></div>
+            </div>
+            <div class="family reveal">
+              <div class="family-head"><h3 data-i18n="fam.man.t">Manifest and schema</h3><span>3</span></div>
+              <div class="rule-row"><code>AT-DRIFT-001</code><span data-i18n="r.drift1">a tool added or changed after approval</span></div>
+              <div class="rule-row"><code>AT-SCHEMA-001</code><span data-i18n="r.schema1">untyped, unbounded or free-form arguments</span></div>
+              <div class="rule-row"><code>AT-APPROVAL-001</code><span data-i18n="r.approval1">a state-changing tool with no risk declared</span></div>
+            </div>
+            <div class="family reveal">
+              <div class="family-head"><h3 data-i18n="fam.out.t">Output and model</h3><span>4</span></div>
+              <div class="rule-row"><code>AT-POISON-001</code><span data-i18n="r.poison1">instructions smuggled into tool metadata</span></div>
+              <div class="rule-row"><code>AT-INJECT-001</code><span data-i18n="r.inject1">instructions aimed at the model in a result</span></div>
+              <div class="rule-row"><code>AT-SINK-001</code><span data-i18n="r.sink1">model input reaching a shell, a file or a URL</span></div>
+              <div class="rule-row"><code>AT-SECRET-001</code><span data-i18n="r.secret1">a credential in the tool output</span></div>
+            </div>
+            <div class="family reveal">
+              <div class="family-head"><h3 data-i18n="fam.fail.t">Failure behaviour</h3><span>2</span></div>
+              <div class="rule-row"><code>AT-FAILCLOSED-001</code><span data-i18n="r.failclosed1">a call executed with missing arguments</span></div>
+              <div class="rule-row"><code>AT-ERROR-001</code><span data-i18n="r.error1">stack traces and internal paths in errors</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= measurement ================= -->
+      <section class="section" id="measurement">
+        <div class="wrap">
+          <div class="section-intro reveal">
+            <h2 data-i18n="meas.title">What the public servers look like.</h2>
+            <p data-i18n="meas.lead">The same tool that checks your server can measure the ones the official MCP registry lists. It sends the handshake and the tool list — and never calls a tool.</p>
+          </div>
+          <div class="metric-grid">
+            <div class="metric reveal">
+              <strong data-count="45.8" data-suffix="%" data-decimals="1">45.8%</strong>
+              <span data-i18n="meas.m1">of the servers that answered the handshake opened a session with no credentials at all</span>
+              <small>81 of 177 &middot; 2026-11-14</small>
+            </div>
+            <div class="metric reveal">
+              <strong data-count="189">189</strong>
+              <span data-i18n="meas.m2">servers measured, every ninth of the 1,698 the registry lists</span>
+              <small>3 well-formed requests each &middot; no tool call ever</small>
+            </div>
+            <div class="metric reveal">
+              <strong data-count="399">399</strong>
+              <span data-i18n="meas.m3">sensitive tools out of the 1,049 those servers publish</span>
+              <small>shell &middot; filesystem &middot; network &middot; database</small>
+            </div>
+          </div>
+          <details class="method reveal">
+            <summary data-i18n="meas.method">See the method and the caveats</summary>
+            <p data-i18n="meas.m1d">The scan walks every page of the registry, keeps the servers that publish a Streamable HTTP endpoint, and takes every ninth of them — a systematic sample, the same one tomorrow. Each server gets at most three well-formed requests: initialize, the initialized notification, and tools/list. No tool is ever called, so nothing can be changed on a server that is not ours. A tool counts as sensitive when its name or its schema reaches a shell, a file, a network endpoint or a database.</p>
+            <p class="warning" data-i18n="meas.warn">This is our own measurement of public servers, not a disclosure. We publish the method and the aggregates; the host names stay with whoever runs the scan, because naming a server that accepts an unauthenticated session is a disclosure in itself.</p>
+            <div class="evidence-links">
+              <a href="https://github.com/Balanov/mcp-attest/blob/main/docs/posture/2026-11-14.md" data-i18n="meas.report">Read the report</a>
+              <a href="https://github.com/Balanov/mcp-attest#posture" data-i18n="meas.reproduce">Reproduce it</a>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ================= faq ================= -->
+      <section class="section" id="faq">
+        <div class="wrap">
+          <div class="section-intro reveal">
+            <h2 data-i18n="faq.title">Questions, answered plainly.</h2>
+          </div>
+          <div class="faq-list">
+            <details class="reveal"><summary data-i18n="faq.call.q">Will it call tools on a server that is not mine?</summary><p data-i18n="faq.call.a">The posture scanner stops at the tool list and never calls a tool. The conformance harness calls tools only on the server you point it at, and only the ones your policy names.</p></details>
+            <details class="reveal"><summary data-i18n="faq.oauth.q">Does it work with RS256 or EdDSA tokens?</summary><p data-i18n="faq.oauth.a">The claim-level probes mint correctly signed tokens with HS256, because that is the only scheme the standard library can sign and verify without a dependency. Name a signing key through <code>oauth.signing_key_env</code>, or mint the token outside and point the probe at it. Without a key those probes are reported as skipped — never as passed.</p></details>
+            <details class="reveal"><summary data-i18n="faq.policy.q">What if my policy is wrong?</summary><p data-i18n="faq.policy.a">Then the harness tells you that. It compares a live server against the policy you wrote; it cannot know the policy you meant. The finding points at the difference and shows both sides.</p></details>
+            <details class="reveal"><summary data-i18n="faq.skip.q">What happens when a check cannot be run?</summary><p data-i18n="faq.skip.a">It is reported as skipped, with the reason. A check that did not run is never counted as passed — silence is not a result.</p></details>
+            <details class="reveal"><summary data-i18n="faq.need.q">Do I need an API key, a model or a network?</summary><p data-i18n="faq.need.a">No. Zero runtime dependencies, no model, no telemetry, nothing leaves your machine. The only network it touches is your server.</p></details>
+            <details class="reveal"><summary data-i18n="faq.mcp.q">Which MCP servers does it work with?</summary><p data-i18n="faq.mcp.a">Any server that speaks MCP over stdio or Streamable HTTP. The client speaks JSON-RPC directly, with no SDK, so there is no library version to match.</p></details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= honest comparison ================= -->
+      <section class="section">
+        <div class="wrap">
+          <div class="honest reveal">
+            <h2 data-i18n="honest.title">Where this fits among the others.</h2>
+            <p data-i18n="honest.b1">MCP testing is crowded — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. Most of them fuzz a server or check a prompt. What the OWASP guide puts first is the authorization matrix and token validation, and that is what this does: every tool, every role, every identity, against a policy, on a live server.</p>
+            <p data-i18n="honest.b2">It is not the best tool for every job. If you want to fuzz a transport, use a fuzzer. If you want to check one prompt, use a prompt tool. If you want to know <b>whether your server refuses what your policy says it must refuse</b>, and to hand an auditor the proof, use this one.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= final cta ================= -->
+      <section class="section">
+        <div class="wrap final-cta reveal">
+          <div>
+            <h2 data-i18n="final.title">Write the policy. Prove it holds.</h2>
+            <p data-i18n="final.body">Free under MIT. Fork it, change it, ship it.</p>
+          </div>
+          <div class="final-actions">
+            <div class="install-command">
+              <code id="install-command">pip install mcp-attest</code>
+              <button class="copy-btn" type="button" data-copy="pip install mcp-attest" data-i18n="copy">Copy</button>
+            </div>
+            <a class="btn btn-primary" href="https://github.com/Balanov/mcp-attest" rel="noopener" data-i18n="final.gh">GitHub</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="citation-wrap">
+        <details class="citation">
+          <summary><span data-i18n="citation">Cite this work — BibTeX</span><span>+</span></summary>
+          <div class="citation-body">
+            <pre id="citation-code">@misc{balanov2026mcpattest,
+  title        = {MCP-ATTEST: Conformance and Attestation Harness for MCP Agent Access Control},
+  author       = {Balanov, Anton},
+  year         = {2026},
   howpublished = {\url{https://github.com/Balanov/mcp-attest}},
-  url    = {https://balanov.pro/mcp-attest/}
+  url          = {https://balanov.pro/mcp-attest/}
 }</pre>
+            <button class="btn" type="button" data-copy-target="#citation-code" data-i18n="copy">Copy</button>
           </div>
         </details>
-      </section>
+      </div>
     </main>
 
-    <footer>
-      <span>© 2026 Anton Balanov · MIT</span>
-      <nav>
-        <a href="https://github.com/Balanov/mcp-attest">GitHub</a>
-        <a href="https://github.com/Balanov/mcp-attest/releases" data-i18n="footReleases">Releases</a>
-        <a href="https://pypi.org/project/mcp-attest/">PyPI</a>
-        <a href="https://balanov.pro/">balanov.pro</a>
-      </nav>
+    <footer class="footer">
+      <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <span data-i18n="foot.made">Built by Anton Balanov · MIT</span>
+        <div class="links">
+          <a href="https://balanov.pro/all/" data-i18n="foot.all">balanov.pro</a>
+          <a href="https://github.com/Balanov/mcp-attest" rel="noopener">GitHub</a>
+          <a href="https://github.com/Balanov/mcp-attest/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License</a>
+        </div>
+      </div>
     </footer>
   </div>
 
@@ -451,136 +770,243 @@
     (function () {
       "use strict";
 
-      function applyTheme(theme) {
-        document.documentElement.setAttribute("data-theme", theme);
-        try { localStorage.setItem("mcp-attest-theme", theme); } catch (e) {}
-      }
-      var savedTheme = null;
-      try { savedTheme = localStorage.getItem("mcp-attest-theme"); } catch (e) {}
-      applyTheme(savedTheme === "dark" ? "dark" : "light");
-      document.getElementById("theme-toggle").addEventListener("click", function () {
-        var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        applyTheme(next);
-      });
-
       var dict = {
         en: {
-          navRules: "Rules", navHow: "How it works", navCi: "CI",
-          star: "Star", fork: "Fork",
-          kicker: "Open source · MIT · no dependencies",
-          headline: "Prove that your server denies what it must deny.",
-          tagline: "Point it at a live MCP server. It connects as every identity in your policy, sends the real calls, and reports every place where the server's decision differs from the one your policy requires.",
-          copy: "Copy", copied: "Copied",
-          ctaGit: "GitHub", ctaPypi: "PyPI",
-          f1: "24 rules, OWASP-mapped", f2: "0 runtime dependencies", f3: "stdio + Streamable HTTP", f4: "No model, no telemetry",
-          cardTitle: "The authorization gap", cardCmd: "attest test",
-          gapPolicy: "Policy says", gapServer: "Server did", gapHarness: "mcp-attest",
-          howTitle: "How it works",
-          h1t: "POLICY", h1d: "Who may call what, and how each identity presents itself: headers or environment.",
-          h2t: "CONNECT", h2d: "One session per identity over stdio or Streamable HTTP. JSON-RPC spoken directly, no SDK.",
-          h3t: "CALL", h3d: "Every identity against every tool, with arguments derived from the tool's own schema.",
-          h4t: "FINDINGS", h4d: "A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.",
-          alsoT: "ALREADY EXPORTING OTEL?",
-          alsoD: "The same policy, applied to the OpenTelemetry export you already produce.",
-          also2T: "WRITING IT ONCE?",
-          also2D: "A portable suite with a published schema: any harness can run your expectations.",
-          postureTitle: "What the registry looks like",
-          p1d: "of the servers in the official MCP registry that answered the handshake opened a session with no credentials at all",
-          p2d: "servers measured, every ninth of the 1,698 the registry lists: three well-formed requests each, and no tool call ever",
-          p3d: "Measured by the tool itself, with the method published and no host names. Reproduce it with one command.",
-          rulesTitle: "Twenty-four rules",
-          r1n: "policy per identity", r1d: "the server allows what your policy denies",
-          r2n: "cross-user objects", r2d: "a valid id belonging to another principal",
-          r3n: "tokens validated", r3d: "a malformed, tampered or expired token gets through",
-          r4n: "no hidden instructions", r4d: "instructions smuggled into tool metadata",
-          r5n: "no manifest drift", r5d: "a tool added or changed after approval",
-          r6n: "no secrets in output", r6d: "a credential in the tool output",
-          r7n: "fail closed", r7d: "a call executed with missing arguments",
-          r8n: "no injected output", r8d: "instructions aimed at the model in a result",
-          r9n: "guarded sinks", r9d: "model input reaching a shell, a file or a URL",
-          r10n: "strict schemas", r10d: "untyped, unbounded or free-form arguments",
-          r11n: "declared risk", r11d: "a state-changing tool with no risk declared",
-          r12n: "clean errors", r12d: "stack traces and internal paths in errors",
-          useTitle: "Use it in CI",
-          s1t: "Write the policy", s1d: "attest init --command \"python my_server.py\" scaffolds one from the live tool list. Default deny, one entry per identity.",
-          s2t: "Point it at the server", s2d: "stdio or Streamable HTTP. The harness connects as each identity and calls what the policy allows and forbids.",
-          s3t: "Gate the build", s3d: "The action fails on critical or high findings, and SARIF lands in code scanning next to the rest of the repository.",
-          s4t: "Keep the evidence", s4d: "A hash-chained, optionally signed bundle per run: request, response, identity, decision, timestamp.",
-          whyTitle: "Why it exists",
-          why1: "\"Security controls should be executable tests, not only checklist items.\" Its minimum automated test set starts with the authorization matrix: every tool, role, scope, tenant and object, including ids owned by another user.",
-          why2: "\"Turning a policy on is not the end of the job: send real calls and check.\"",
-          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
-          honest: "MCP testing is crowded — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. What none of them does is the authorization matrix and token validation the OWASP guide puts first. This one does, offline and deterministically. ",
-          honestLink: "Full comparison →",
-          sp1: "rules", sp2: "dependencies", sp3: "transports",
-          citeTitle: "Cite this work — BibTeX", footReleases: "Releases"
+          "nav.get": "What you get", "nav.how": "How it works", "nav.rules": "Rules",
+          "nav.measure": "Measurement", "nav.faq": "FAQ", "gh.stars": "Stars", "gh.forks": "Forks",
+          "copy": "Copy", "copied": "Copied",
+          "hero.badge": "Open source · MIT · no dependencies",
+          "hero.title": "Prove that your server denies what it must deny.",
+          "hero.lead": "Point it at a live MCP server. It connects as every identity in your policy, sends the calls your policy allows and forbids, and reports every place where the server's decision differs from the one your policy requires.",
+          "hero.meta": "v1.2.1 · Python 3.10+ · 0 runtime dependencies · MIT",
+          "hero.f1": "24 rules, OWASP-mapped", "hero.f2": "stdio + Streamable HTTP", "hero.f3": "No model, no telemetry",
+          "demo.title": "The enforcement gap",
+          "demo.kPolicy": "POLICY", "demo.kWho": "IDENTITY", "demo.kRule": "RULE", "demo.kIdent": "IDENTITY",
+          "demo.kCred": "CREDENTIALS", "demo.kTrans": "TRANSPORT", "demo.kServer": "SERVER",
+          "demo.findingWhat": "The server allows what the policy denies.",
+          "demo.note": "A model of one finding, not a live run",
+          "art.title": "A verdict you can put in front of anyone.",
+          "art.lead": "Not a log you have to believe. Every finding arrives with the request, the response, the identity and the decision that differed — in a format your CI and your auditor already know.",
+          "art.sarif.t": "SARIF for code scanning",
+          "art.sarif.b": "The run writes a SARIF file, and the GitHub Action uploads it to code scanning, next to the rest of your repository's results.",
+          "art.evid.t": "A hash-chained evidence bundle",
+          "art.evid.b": "Request, response, identity, decision, timestamp — chained by hash and optionally signed, so anyone can check that nothing was edited afterwards.",
+          "art.suite.t": "A portable suite",
+          "art.suite.b": "Export your expectations as a suite with a published JSON Schema. Any harness can run them — this one is not the only reader of your policy.",
+          "art.proof": "80 tests in the release · the sdist from PyPI runs its own tests · zero telemetry",
+          "art.adopt": "Read the 60-second guide",
+          "uses.title": "Where it saves your day.",
+          "uses.review.t": "The review that never happens",
+          "uses.review.b": "Every change to an MCP server changes what that server may do. Run it against your policy before it merges, and let the build fail when the answer differs.",
+          "uses.inherit.t": "The server you inherited",
+          "uses.inherit.b": "You did not write the server and nobody wrote the policy. attest init reads the live tool list and scaffolds a default-deny policy you can then argue with.",
+          "uses.vendor.t": "The vendor's server",
+          "uses.vendor.b": "Point the harness at somebody else's MCP server and at the policy you require. It reports where that server deviates, with the evidence you need to send along.",
+          "uses.incident.t": "The incident review",
+          "uses.incident.b": "You already export OpenTelemetry. attest check --otlp replays that export against the policy and shows which calls would not have been allowed.",
+          "how.chip": "Four commands",
+          "how.title": "From an empty policy to a verdict.",
+          "how.body": "No plugin for your language, no service to configure, no model in the loop. A policy file and a server address.",
+          "how.link": "Read the full quick start",
+          "how.s1t": "Write the policy", "how.s1d": "Scaffolds one from the live tool list. Default deny, one entry per identity.",
+          "how.s2t": "Point it at the server", "how.s2d": "The harness connects as each identity and calls what the policy allows and forbids.",
+          "how.s3t": "Gate the build", "how.s3d": "A blocking exit code, SARIF for code scanning, a hash-chained evidence bundle.",
+          "how.s4t": "Keep the expectations", "how.s4d": "A portable suite with a published schema: any harness can run your expectations.",
+          "rules.title": "Twenty-four rules, in five families.",
+          "rules.lead": "Each rule states what the server did that it must not do. The OAuth half maps to the OWASP guide's authentication and authorization tests; the rest covers what a tool description and a tool result can still get wrong.",
+          "fam.authz.t": "Authorization", "fam.token.t": "Tokens and OAuth", "fam.man.t": "Manifest and schema",
+          "fam.out.t": "Output and model", "fam.fail.t": "Failure behaviour",
+          "r.authz1": "the server allows what your policy denies",
+          "r.authz2": "a valid id belonging to another principal",
+          "r.token1": "a malformed, tampered or expired token gets through",
+          "r.oauth1": "a request with no bearer token is accepted",
+          "r.oauth2": "a tampered signature is accepted",
+          "r.oauth3": "an alg: none token is accepted",
+          "r.oauth4": "an expired token is accepted",
+          "r.oauth5": "a token for another resource is accepted",
+          "r.oauth6": "a token from another issuer is accepted",
+          "r.oauth7": "a tool runs without the scope it needs",
+          "r.oauth8": "the refusal does not point at the resource metadata",
+          "r.oauth9": "a code is issued without an S256 challenge",
+          "r.oauth10": "a code is issued for an unregistered URI",
+          "r.oauth11": "the authorization response drops the state",
+          "r.oauth12": "the upstream accepts a token made for this server",
+          "r.drift1": "a tool added or changed after approval",
+          "r.schema1": "untyped, unbounded or free-form arguments",
+          "r.approval1": "a state-changing tool with no risk declared",
+          "r.poison1": "instructions smuggled into tool metadata",
+          "r.inject1": "instructions aimed at the model in a result",
+          "r.sink1": "model input reaching a shell, a file or a URL",
+          "r.secret1": "a credential in the tool output",
+          "r.failclosed1": "a call executed with missing arguments",
+          "r.error1": "stack traces and internal paths in errors",
+          "meas.title": "What the public servers look like.",
+          "meas.lead": "The same tool that checks your server can measure the ones the official MCP registry lists. It sends the handshake and the tool list — and never calls a tool.",
+          "meas.m1": "of the servers that answered the handshake opened a session with no credentials at all",
+          "meas.m2": "servers measured, every ninth of the 1,698 the registry lists",
+          "meas.m3": "sensitive tools out of the 1,049 those servers publish",
+          "meas.method": "See the method and the caveats",
+          "meas.m1d": "The scan walks every page of the registry, keeps the servers that publish a Streamable HTTP endpoint, and takes every ninth of them — a systematic sample, the same one tomorrow. Each server gets at most three well-formed requests: initialize, the initialized notification, and tools/list. No tool is ever called, so nothing can be changed on a server that is not ours. A tool counts as sensitive when its name or its schema reaches a shell, a file, a network endpoint or a database.",
+          "meas.warn": "This is our own measurement of public servers, not a disclosure. We publish the method and the aggregates; the host names stay with whoever runs the scan, because naming a server that accepts an unauthenticated session is a disclosure in itself.",
+          "meas.report": "Read the report", "meas.reproduce": "Reproduce it",
+          "faq.title": "Questions, answered plainly.",
+          "faq.call.q": "Will it call tools on a server that is not mine?",
+          "faq.call.a": "The posture scanner stops at the tool list and never calls a tool. The conformance harness calls tools only on the server you point it at, and only the ones your policy names.",
+          "faq.oauth.q": "Does it work with RS256 or EdDSA tokens?",
+          "faq.oauth.a": "The claim-level probes mint correctly signed tokens with HS256, because that is the only scheme the standard library can sign and verify without a dependency. Name a signing key through oauth.signing_key_env, or mint the token outside and point the probe at it. Without a key those probes are reported as skipped — never as passed.",
+          "faq.policy.q": "What if my policy is wrong?",
+          "faq.policy.a": "Then the harness tells you that. It compares a live server against the policy you wrote; it cannot know the policy you meant. The finding points at the difference and shows both sides.",
+          "faq.skip.q": "What happens when a check cannot be run?",
+          "faq.skip.a": "It is reported as skipped, with the reason. A check that did not run is never counted as passed — silence is not a result.",
+          "faq.need.q": "Do I need an API key, a model or a network?",
+          "faq.need.a": "No. Zero runtime dependencies, no model, no telemetry, nothing leaves your machine. The only network it touches is your server.",
+          "faq.mcp.q": "Which MCP servers does it work with?",
+          "faq.mcp.a": "Any server that speaks MCP over stdio or Streamable HTTP. The client speaks JSON-RPC directly, with no SDK, so there is no library version to match.",
+          "honest.title": "Where this fits among the others.",
+          "honest.b1": "MCP testing is crowded — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. Most of them fuzz a server or check a prompt. What the OWASP guide puts first is the authorization matrix and token validation, and that is what this does: every tool, every role, every identity, against a policy, on a live server.",
+          "honest.b2": "It is not the best tool for every job. If you want to fuzz a transport, use a fuzzer. If you want to check one prompt, use a prompt tool. If you want to know whether your server refuses what your policy says it must refuse, and to hand an auditor the proof, use this one.",
+          "final.title": "Write the policy. Prove it holds.",
+          "final.body": "Free under MIT. Fork it, change it, ship it.",
+          "final.gh": "GitHub",
+          "citation": "Cite this work — BibTeX",
+          "foot.made": "Built by Anton Balanov · MIT", "foot.all": "balanov.pro", "foot.license": "License"
         },
         ru: {
-          navRules: "Правила", navHow: "Как работает", navCi: "CI",
-          star: "Звёзды", fork: "Форки",
-          kicker: "Открытый код · MIT · без зависимостей",
-          headline: "Докажи, что сервер отказывает в том, в чём обязан.",
-          tagline: "Наведи на живой MCP-сервер. Он подключается как каждая личность из твоей политики, отправляет настоящие вызовы и показывает все места, где решение сервера расходится с решением политики.",
-          copy: "Copy", copied: "Скопировано",
-          ctaGit: "GitHub", ctaPypi: "PyPI",
-          f1: "24 правил по OWASP", f2: "0 зависимостей", f3: "stdio + Streamable HTTP", f4: "Без модели и телеметрии",
-          cardTitle: "Разрыв авторизации", cardCmd: "attest test",
-          gapPolicy: "Политика", gapServer: "Сервер сделал", gapHarness: "mcp-attest",
-          howTitle: "Как это работает",
-          h1t: "ПОЛИТИКА", h1d: "Кому что можно вызывать и как личность себя представляет: заголовки или окружение.",
-          h2t: "ПОДКЛЮЧЕНИЕ", h2d: "По сессии на личность, stdio или Streamable HTTP. JSON-RPC говорим сами, без SDK.",
-          h3t: "ВЫЗОВЫ", h3d: "Каждая личность против каждого инструмента, аргументы берутся из его же схемы.",
-          h4t: "НАХОДКИ", h4d: "Блокирующий код возврата, SARIF для code scanning и хеш-цепочка доказательств.",
-          alsoT: "УЖЕ ОТДАЁШЬ В OTEL?",
-          alsoD: "Та же политика, применённая к выгрузке OpenTelemetry, которую ты уже отдаёшь.",
-          also2T: "ПИШЕШЬ ОДИН РАЗ?",
-          also2D: "Переносимый сюит с опубликованной схемой: твои ожидания запустит любой харнесс.",
-          postureTitle: "Что видно в реестре",
-          p1d: "серверов из официального реестра MCP ответили на рукопожатие — и открыли сессию вообще без учётных данных",
-          p2d: "серверов измерено, каждый девятый из 1698 в реестре: по три корректных запроса и ни одного вызова инструмента",
-          p3d: "Измерено самим инструментом, методология опубликована, имён хостов нет. Воспроизводится одной командой.",
-          rulesTitle: "Двадцать четыре правила",
-          r1n: "политика на личность", r1d: "сервер разрешает то, что политика запрещает",
-          r2n: "чужие объекты", r2d: "валидный идентификатор другого принципала",
-          r3n: "проверка токенов", r3d: "некорректный, подделанный или просроченный токен проходит",
-          r4n: "нет скрытых инструкций", r4d: "инструкции спрятаны в метаданных инструмента",
-          r5n: "манифест не меняется", r5d: "инструмент добавлен или изменён после одобрения",
-          r6n: "нет секретов в выводе", r6d: "учётные данные в результате инструмента",
-          r7n: "fail closed", r7d: "вызов выполнен без обязательных аргументов",
-          r8n: "нет инструкций в выводе", r8d: "внутри результата инструкции для модели",
-          r9n: "ограниченные стоки", r9d: "ввод модели доходит до шелла, файла или URL",
-          r10n: "строгие схемы", r10d: "аргументы без типов, границ и структуры",
-          r11n: "объявленный риск", r11d: "инструмент с побочными эффектами без риска",
-          r12n: "чистые ошибки", r12d: "стек-трейсы и внутренние пути в ошибках",
-          o1n: "токен обязателен", o1d: "запрос без bearer-токена принят",
-          o2n: "подпись проверяется", o2d: "подделанная подпись принята",
-          o3n: "без подписи — отказ", o3d: "токен с alg: none принят",
-          o4n: "срок действия", o4d: "просроченный токен принят",
-          o5n: "аудитория", o5d: "токен для другого ресурса принят",
-          o6n: "издатель", o6d: "токен от другого издателя принят",
-          o7n: "scope", o7d: "инструмент выполняется без нужного scope",
-          o8n: "метаданные ресурса", o8d: "отказ не указывает на метаданные",
-          o9n: "PKCE обязателен", o9d: "код выдан без S256-челленджа",
-          o10n: "redirect проверяется", o10d: "код выдан на незарегистрированный URI",
-          o11n: "state возвращается", o11d: "ответ авторизации теряет state",
-          o12n: "нет passthrough", o12d: "upstream принимает токен, выпущенный для этого сервера",
-          useTitle: "Использование в CI",
-          s1t: "Опиши политику", s1d: "attest init --command \"python my_server.py\" создаёт шаблон по живому списку инструментов. Default deny, по записи на личность.",
-          s2t: "Наведи на сервер", s2d: "stdio или Streamable HTTP. Харнесс подключается как каждая личность и вызывает то, что политика разрешает и запрещает.",
-          s3t: "Закрой сборку", s3d: "Action падает на critical и high, а SARIF попадает в code scanning рядом с остальными результатами репозитория.",
-          s4t: "Сохрани доказательства", s4d: "Хеш-цепь с опциональной подписью на каждый прогон: запрос, ответ, личность, решение, время.",
-          whyTitle: "Зачем это нужно",
-          why1: "\"Security controls should be executable tests, not only checklist items.\" Минимальный автоматизированный набор гайда начинается с матрицы авторизации: каждый инструмент, роль, scope, тенант и объект, включая чужие идентификаторы.",
-          why2: "\"Turning a policy on is not the end of the job: send real calls and check.\"",
-          why3: "\"Without these traceable audit logs, incident response and accountability become significantly difficult, especially in multi-tenant environments.\"",
-          honest: "Тестирование MCP забито — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. Чего не делает ни один из них — матрица авторизации и проверка токенов, которые гайд OWASP ставит первыми. Наш делает, офлайн и детерминированно. ",
-          honestLink: "Полное сравнение →",
-          sp1: "правил", sp2: "зависимостей", sp3: "транспортов",
-          citeTitle: "Цитирование — BibTeX", footReleases: "Релизы"
+          "nav.get": "Что вы получаете", "nav.how": "Как работает", "nav.rules": "Правила",
+          "nav.measure": "Измерение", "nav.faq": "Вопросы", "gh.stars": "Звёзды", "gh.forks": "Форки",
+          "copy": "Копировать", "copied": "Скопировано",
+          "hero.badge": "Открытый код · MIT · без зависимостей",
+          "hero.title": "Докажи, что сервер отказывает в том, в чём обязан.",
+          "hero.lead": "Наведи на живой MCP-сервер. Он подключается как каждая личность из твоей политики, отправляет вызовы, которые политика разрешает и запрещает, и показывает все места, где решение сервера расходится с решением политики.",
+          "hero.meta": "v1.2.1 · Python 3.10+ · 0 зависимостей во время работы · MIT",
+          "hero.f1": "24 правил по OWASP", "hero.f2": "stdio + Streamable HTTP", "hero.f3": "Без модели и телеметрии",
+          "demo.title": "Разрыв авторизации",
+          "demo.kPolicy": "ПОЛИТИКА", "demo.kWho": "ЛИЧНОСТЬ", "demo.kRule": "ПРАВИЛО", "demo.kIdent": "ЛИЧНОСТЬ",
+          "demo.kCred": "УЧЁТНЫЕ ДАННЫЕ", "demo.kTrans": "ТРАНСПОРТ", "demo.kServer": "СЕРВЕР",
+          "demo.findingWhat": "Сервер разрешает то, что политика запрещает.",
+          "demo.note": "Модель одной находки, не живой прогон",
+          "art.title": "Вердикт, который можно показать кому угодно.",
+          "art.lead": "Не лог, в который надо поверить. Каждая находка приходит с запросом, ответом, личностью и решением, которое разошлось — в формате, который твой CI и твой аудитор и так понимают.",
+          "art.sarif.t": "SARIF для code scanning",
+          "art.sarif.b": "Прогон пишет SARIF, а GitHub Action выкладывает его в code scanning рядом с остальными результатами репозитория.",
+          "art.evid.t": "Хеш-цепочка доказательств",
+          "art.evid.b": "Запрос, ответ, личность, решение, время — сцепленные хешем и, по желанию, подписанные: кто угодно может проверить, что ничего не правили.",
+          "art.suite.t": "Переносимый сюит",
+          "art.suite.b": "Выгрузи ожидания в сюит с опубликованной JSON Schema. Их запустит любой харнесс — твою политику читает не только этот.",
+          "art.proof": "80 тестов в релизе · sdist с PyPI проходит свои тесты · нулевая телеметрия",
+          "art.adopt": "Гайд на 60 секунд",
+          "uses.title": "Где это выручает.",
+          "uses.review.t": "Ревью, которого не было",
+          "uses.review.b": "Любое изменение MCP-сервера меняет то, что серверу разрешено. Прогони его против политики до мержа и позволь сборке падать, когда ответы расходятся.",
+          "uses.inherit.t": "Сервер, который ты унаследовал",
+          "uses.inherit.b": "Ты сервер не писал, и политики никто не писал. attest init читает живой список инструментов и создаёт политику deny-by-default, с которой дальше можно спорить.",
+          "uses.vendor.t": "Сервер вендора",
+          "uses.vendor.b": "Наведи харнесс на чужой MCP-сервер и на требуемую тобой политику. Он покажет, где сервер отступает от неё, и даст доказательства, которые можно отправить.",
+          "uses.incident.t": "Разбор инцидента",
+          "uses.incident.b": "Ты уже отдаёшь OpenTelemetry. attest check --otlp переигрывает эту выгрузку против политики и показывает, какие вызовы не были бы разрешены.",
+          "how.chip": "Четыре команды",
+          "how.title": "От пустой политики до вердикта.",
+          "how.body": "Никакого плагина под твой язык, никакого сервиса, никакой модели в контуре. Файл политики и адрес сервера.",
+          "how.link": "Полный быстрый старт",
+          "how.s1t": "Опиши политику", "how.s1d": "Создаёт шаблон по живому списку инструментов. Default deny, по записи на личность.",
+          "how.s2t": "Наведи на сервер", "how.s2d": "Харнесс подключается как каждая личность и вызывает то, что политика разрешает и запрещает.",
+          "how.s3t": "Закрой сборку", "how.s3d": "Блокирующий код возврата, SARIF для code scanning, хеш-цепочка доказательств.",
+          "how.s4t": "Оставь ожидания", "how.s4d": "Переносимый сюит с опубликованной схемой: твои ожидания запустит любой харнесс.",
+          "rules.title": "Двадцать четыре правила в пяти семействах.",
+          "rules.lead": "Каждое правило говорит, что сервер сделал такого, чего не должен. OAuth-половина отображается на тесты аутентификации и авторизации гайда OWASP; остальное — про то, что может пойти не так в описании инструмента и в его результате.",
+          "fam.authz.t": "Авторизация", "fam.token.t": "Токены и OAuth", "fam.man.t": "Манифест и схема",
+          "fam.out.t": "Вывод и модель", "fam.fail.t": "Поведение при сбоях",
+          "r.authz1": "сервер разрешает то, что политика запрещает",
+          "r.authz2": "валидный идентификатор чужого принципала",
+          "r.token1": "некорректный, подделанный или просроченный токен проходит",
+          "r.oauth1": "запрос без bearer-токена принят",
+          "r.oauth2": "подделанная подпись принята",
+          "r.oauth3": "токен с alg: none принят",
+          "r.oauth4": "просроченный токен принят",
+          "r.oauth5": "токен для другого ресурса принят",
+          "r.oauth6": "токен от другого издателя принят",
+          "r.oauth7": "инструмент выполняется без нужного scope",
+          "r.oauth8": "отказ не указывает на метаданные ресурса",
+          "r.oauth9": "код выдан без S256-челленджа",
+          "r.oauth10": "код выдан на незарегистрированный URI",
+          "r.oauth11": "ответ авторизации теряет state",
+          "r.oauth12": "upstream принимает токен, выпущенный для этого сервера",
+          "r.drift1": "инструмент добавлен или изменён после одобрения",
+          "r.schema1": "аргументы без типов, границ и структуры",
+          "r.approval1": "инструмент с побочными эффектами без объявленного риска",
+          "r.poison1": "инструкции спрятаны в метаданных инструмента",
+          "r.inject1": "внутри результата инструкции для модели",
+          "r.sink1": "ввод модели доходит до шелла, файла или URL",
+          "r.secret1": "учётные данные в результате инструмента",
+          "r.failclosed1": "вызов выполнен без обязательных аргументов",
+          "r.error1": "стек-трейсы и внутренние пути в ошибках",
+          "meas.title": "Что видно в публичных серверах.",
+          "meas.lead": "Тот же инструмент, что проверяет твой сервер, может измерить и те, что перечислены в официальном реестре MCP. Он шлёт рукопожатие и список инструментов — и ни разу не вызывает инструмент.",
+          "meas.m1": "серверов из ответивших на рукопожатие открыли сессию вообще без учётных данных",
+          "meas.m2": "серверов измерено, каждый девятый из 1 698 в реестре",
+          "meas.m3": "чувствительных инструментов из 1 049, которые эти серверы публикуют",
+          "meas.method": "Метод и оговорки",
+          "meas.m1d": "Скан обходит все страницы реестра, оставляет серверы, публикующие Streamable HTTP, и берёт каждого девятого — систематическая выборка, завтра такая же. Каждому серверу уходит не больше трёх корректных запросов: initialize, уведомление initialized и tools/list. Инструмент не вызывается никогда, поэтому на чужом сервере ничего измениться не может. Инструмент считается чувствительным, если его имя или схема дотягиваются до шелла, файла, сетевого адреса или базы.",
+          "meas.warn": "Это наше собственное измерение публичных серверов, а не раскрытие уязвимостей. Мы публикуем метод и агрегаты; имена хостов остаются у того, кто запускает скан, потому что назвать сервер, принимающий сессию без аутентификации, — это и есть раскрытие.",
+          "meas.report": "Читать отчёт", "meas.reproduce": "Воспроизвести",
+          "faq.title": "Вопросы без виляния.",
+          "faq.call.q": "Он будет вызывать инструменты на чужом сервере?",
+          "faq.call.a": "Скан posture останавливается на списке инструментов и не вызывает ни одного. Харнесс соответствия вызывает инструменты только на том сервере, куда ты его направил, и только те, что названы в политике.",
+          "faq.oauth.q": "Работает ли с RS256 или EdDSA?",
+          "faq.oauth.a": "Проверки уровня claim минтуют корректно подписанные токены по HS256 — это единственная схема, которую стандартная библиотека умеет подписывать и проверять без зависимостей. Ключ подписи задаётся через oauth.signing_key_env, либо токен минтится снаружи. Без ключа эти проверки помечаются как пропущенные — никогда как пройденные.",
+          "faq.policy.q": "А если политика неправильная?",
+          "faq.policy.a": "Тогда харнесс тебе об этом и скажет. Он сравнивает живой сервер с политикой, которую ты написал; он не может знать, какую политику ты имел в виду. Находка указывает на расхождение и показывает обе стороны.",
+          "faq.skip.q": "Что будет, если проверку выполнить нельзя?",
+          "faq.skip.a": "Она будет помечена как пропущенная, с причиной. Проверка, которая не выполнялась, никогда не считается пройденной: тишина — не результат.",
+          "faq.need.q": "Нужен ли API-ключ, модель или сеть?",
+          "faq.need.a": "Нет. Ноль зависимостей во время работы, никакой модели, никакой телеметрии, ничего не покидает твою машину. Единственная сеть, которую он трогает, — твой сервер.",
+          "faq.mcp.q": "С какими MCP-серверами работает?",
+          "faq.mcp.a": "С любыми, что говорят по MCP через stdio или Streamable HTTP. Клиент говорит по JSON-RPC напрямую, без SDK, — версии библиотеки не нужно совпадать.",
+          "honest.title": "Где это стоит среди остальных.",
+          "honest.b1": "Тестирование MCP забито — mcp-assert, mcp-fence, mcp-fuzz, MCP-Scan, promptfoo, mcpsnoop, mcp-conformance. Большинство фаззит сервер или проверяет промпт. Гайд OWASP ставит первыми матрицу авторизации и проверку токенов — это и делает он: каждый инструмент, каждая роль, каждая личность, против политики, на живом сервере.",
+          "honest.b2": "Он не лучший инструмент для каждой задачи. Хочешь фаззить транспорт — бери фаззер. Хочешь проверить один промпт — бери промпт-инструмент. А хочешь знать, отказывает ли твой сервер в том, в чём политика говорит отказать, и отдать аудитору доказательство — бери этот.",
+          "final.title": "Опиши политику. Докажи, что она держит.",
+          "final.body": "Бесплатно по MIT. Форкни, меняй, выпускай.",
+          "final.gh": "GitHub",
+          "citation": "Цитирование — BibTeX",
+          "foot.made": "Сделано Антоном Балановым · MIT", "foot.all": "balanov.pro", "foot.license": "Лицензия"
         }
       };
 
+      /* the demo: four steps of one finding */
+      var steps = {
+        en: [
+          { state: "POLICY", bad: false,
+            explain: "You wrote the policy: alice may not refund an order. The harness reads it and plans the calls it has to make.",
+            action: "Connect as alice", sarif: "not written yet", evidence: "not written yet" },
+          { state: "CONNECTING", bad: false,
+            explain: "One session per identity, presenting that identity's own credentials. Nothing is shared between identities.",
+            action: "Send the call", sarif: "not written yet", evidence: "not written yet" },
+          { state: "CALLING", bad: false,
+            explain: "Same identity, same tool, the very arguments the policy forbids. The server allowed the call.",
+            action: "Compare with the policy", sarif: "not written yet", evidence: "not written yet" },
+          { state: "FINDING", bad: true,
+            explain: "The server's decision differs from the policy's. That difference is the finding — and it comes with the request, the response and the decision in an evidence bundle.",
+            action: "Run it again", sarif: "written · 1 result", evidence: "written · 3 entries" }
+        ],
+        ru: [
+          { state: "ПОЛИТИКА", bad: false,
+            explain: "Ты написал политику: alice не может возвращать заказ. Харнесс читает её и планирует вызовы, которые обязан сделать.",
+            action: "Подключиться как alice", sarif: "ещё не записан", evidence: "ещё не записан" },
+          { state: "ПОДКЛЮЧЕНИЕ", bad: false,
+            explain: "По сессии на личность, и каждая предъявляет свои собственные учётные данные. Между личностями ничего не общего.",
+            action: "Отправить вызов", sarif: "ещё не записан", evidence: "ещё не записан" },
+          { state: "ВЫЗОВ", bad: false,
+            explain: "Та же личность, тот же инструмент, ровно те аргументы, которые политика запрещает. Сервер вызов разрешил.",
+            action: "Сравнить с политикой", sarif: "ещё не записан", evidence: "ещё не записан" },
+          { state: "НАХОДКА", bad: true,
+            explain: "Решение сервера разошлось с решением политики. Это и есть находка — и приходит она с запросом, ответом и решением в пакете доказательств.",
+            action: "Прогнать заново", sarif: "записан · 1 результат", evidence: "записан · 3 записи" }
+        ]
+      };
+
       var currentLang = "en";
+
       function detectLang() {
         try {
           var saved = localStorage.getItem("mcp-attest-lang");
@@ -594,6 +1020,7 @@
         }
         return "en";
       }
+
       function applyLang(lang) {
         currentLang = lang;
         document.documentElement.lang = lang;
@@ -606,11 +1033,89 @@
         document.getElementById("lang-ru").setAttribute("aria-pressed", lang === "ru" ? "true" : "false");
         document.title = lang === "ru" ? "MCP-ATTEST — докажи, что политика работает" : "MCP-ATTEST — prove the policy enforces";
         try { localStorage.setItem("mcp-attest-lang", lang); } catch (e) {}
+        renderStep();
       }
+
+      /* ---- the demo ---- */
+      var demo = document.getElementById("demo");
+      var demoState = document.getElementById("demo-state");
+      var demoExplain = document.getElementById("demo-explain");
+      var demoActionLabel = document.getElementById("demo-action-label");
+      var demoSarif = document.getElementById("demo-sarif");
+      var demoEvidence = document.getElementById("demo-evidence");
+      var panels = demo.querySelectorAll(".demo-panel");
+
+      function renderStep() {
+        var index = parseInt(demo.getAttribute("data-step"), 10) || 0;
+        var table = steps[currentLang] || steps.en;
+        var step = table[index] || table[0];
+        for (var i = 0; i < panels.length; i++) {
+          panels[i].classList.toggle("is-active", i === index);
+        }
+        demoState.textContent = step.state;
+        demoState.classList.toggle("is-bad", !!step.bad);
+        demoExplain.textContent = step.explain;
+        demoActionLabel.textContent = step.action;
+        demoSarif.textContent = step.sarif;
+        demoEvidence.textContent = step.evidence;
+      }
+
+      document.getElementById("demo-action").addEventListener("click", function () {
+        var index = parseInt(demo.getAttribute("data-step"), 10) || 0;
+        demo.setAttribute("data-step", String((index + 1) % 4));
+        renderStep();
+      });
+
+      /* ---- language ---- */
       document.getElementById("lang-en").addEventListener("click", function () { applyLang("en"); });
       document.getElementById("lang-ru").addEventListener("click", function () { applyLang("ru"); });
-      applyLang(detectLang());
 
+      /* ---- theme ---- */
+      function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        try { localStorage.setItem("mcp-attest-theme", theme); } catch (e) {}
+      }
+      var savedTheme = null;
+      try { savedTheme = localStorage.getItem("mcp-attest-theme"); } catch (e) {}
+      applyTheme(savedTheme === "dark" ? "dark" : "light");
+      document.getElementById("theme-toggle").addEventListener("click", function () {
+        var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        applyTheme(next);
+      });
+
+      /* ---- copy buttons ---- */
+      function copyText(text, btn) {
+        function done() {
+          btn.textContent = dict[currentLang].copied;
+          btn.classList.add("copied");
+          setTimeout(function () { btn.textContent = dict[currentLang].copy; btn.classList.remove("copied"); }, 1400);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+        } else { legacyCopy(text); done(); }
+      }
+      function legacyCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      var copyBtns = document.querySelectorAll("[data-copy], [data-copy-target]");
+      for (var c = 0; c < copyBtns.length; c++) {
+        (function (btn) {
+          btn.addEventListener("click", function () {
+            var text = btn.getAttribute("data-copy");
+            if (!text) {
+              var target = document.querySelector(btn.getAttribute("data-copy-target"));
+              text = target ? target.textContent : "";
+            }
+            copyText(text, btn);
+          });
+        })(copyBtns[c]);
+      }
+
+      /* ---- live counters ---- */
       (function () {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "https://api.github.com/repos/Balanov/mcp-attest", true);
@@ -626,84 +1131,55 @@
         try { xhr.send(); } catch (e) {}
       })();
 
-      function copyText(text, btn) {
-        function done() {
-          btn.textContent = dict[currentLang].copied;
-          btn.classList.add("copied");
-          setTimeout(function () { btn.textContent = dict[currentLang].copy; btn.classList.remove("copied"); }, 1500);
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
-        } else { legacyCopy(text); done(); }
-      }
-      function legacyCopy(text) {
-        var ta = document.createElement("textarea");
-        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-        document.body.appendChild(ta); ta.select();
-        try { document.execCommand("copy"); } catch (e) {}
-        document.body.removeChild(ta);
-      }
-      var copyBtns = document.querySelectorAll(".copy-btn");
-      for (var i = 0; i < copyBtns.length; i++) {
-        (function (btn) {
-          btn.addEventListener("click", function () {
-            var target = document.getElementById(btn.getAttribute("data-copy"));
-            if (target) copyText(target.textContent, btn);
+      /* ---- reveal on scroll, and the counters ---- */
+      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var reveals = document.querySelectorAll(".reveal");
+      if (!("IntersectionObserver" in window) || reduced) {
+        for (var k = 0; k < reveals.length; k++) reveals[k].classList.add("is-in");
+      } else {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-in");
+              observer.unobserve(entry.target);
+            }
           });
-        })(copyBtns[i]);
+        }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+        for (var m = 0; m < reveals.length; m++) observer.observe(reveals[m]);
       }
 
-      var term = document.getElementById("terminal-body");
-      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      var script = [
-        { cls: "prompt", text: '$ attest test --command "python my_server.py" --policy policy.json\n', type: true },
-        { cls: "crit", text: "!! [CRITICAL] AT-AUTHZ-001 'alice' was allowed to call 'refund_order'\n" },
-        { cls: "dim", text: "          the policy denies it for this identity, but the server executed the call.\n" },
-        { cls: "dim", text: "          this is broken access control, not a policy tuning problem.\n" },
-        { cls: "crit", text: "!! [CRITICAL] AT-AUTHZ-002 case AUTHZ-CROSS-01: 'alice' reached an object\n" },
-        { cls: "dim", text: "          she must not reach — order B-77 belongs to bob, not to alice.\n" },
-        { cls: "warn", text: "!  [HIGH    ] AT-SINK-001 tool 'read_note' takes an unconstrained 'path'\n" },
-        { cls: "ok", text: "\nsummary: critical=4, high=2, medium=4, low=3\n" },
-        { cls: "prompt", text: '$ echo $?\n', type: true },
-        { cls: "ok", text: "1\n" }
-      ];
-      function escHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
-      function renderAll() {
-        var html = "";
-        for (var i = 0; i < script.length; i++) {
-          html += '<span class="' + script[i].cls + '">' + escHtml(script[i].text) + "</span>";
+      var counters = document.querySelectorAll("[data-count]");
+      function runCounter(node) {
+        var target = parseFloat(node.getAttribute("data-count"));
+        var decimals = parseInt(node.getAttribute("data-decimals") || "0", 10);
+        var suffix = node.getAttribute("data-suffix") || "";
+        if (reduced) { node.textContent = target.toFixed(decimals) + suffix; return; }
+        var started = null;
+        var duration = 900;
+        function tick(now) {
+          if (started === null) started = now;
+          var progress = Math.min(1, (now - started) / duration);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          node.textContent = (target * eased).toFixed(decimals) + suffix;
+          if (progress < 1) requestAnimationFrame(tick);
         }
-        term.innerHTML = html;
+        requestAnimationFrame(tick);
       }
-      if (reduced) {
-        renderAll();
+      if (!("IntersectionObserver" in window) || reduced) {
+        for (var q = 0; q < counters.length; q++) runCounter(counters[q]);
       } else {
-        var idx = 0, charPos = 0, buffer = "";
-        function tick() {
-          if (idx >= script.length) {
-            setTimeout(function () { idx = 0; charPos = 0; buffer = ""; term.innerHTML = '<span class="cursor"></span>'; setTimeout(tick, 8000); }, 6000);
-            return;
-          }
-          var line = script[idx];
-          if (!line.type) {
-            buffer += '<span class="' + line.cls + '">' + escHtml(line.text) + "</span>";
-            term.innerHTML = buffer + '<span class="cursor"></span>';
-            idx++;
-            setTimeout(tick, 520);
-            return;
-          }
-          charPos++;
-          term.innerHTML = buffer + '<span class="' + line.cls + '">' + escHtml(line.text.slice(0, charPos)) + '</span><span class="cursor"></span>';
-          if (charPos >= line.text.length) {
-            buffer += '<span class="' + line.cls + '">' + escHtml(line.text) + "</span>";
-            idx++; charPos = 0;
-            setTimeout(tick, 480);
-          } else {
-            setTimeout(tick, 22 + Math.random() * 24);
-          }
-        }
-        tick();
+        var counterObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              runCounter(entry.target);
+              counterObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.4 });
+        for (var w = 0; w < counters.length; w++) counterObserver.observe(counters[w]);
       }
+
+      applyLang(detectLang());
     })();
   </script>
 </body>
