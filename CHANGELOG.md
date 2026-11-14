@@ -8,7 +8,7 @@
 
 ## [1.2.1] - 2026-11-14
 
-The source distribution now carries what its own tests read.
+Two defects in the published artifact: one in the packaging, one in the probe.
 
 ### Fixed
 
@@ -17,6 +17,14 @@ The source distribution now carries what its own tests read.
   against the validator failed on the unpacked tarball. `MANIFEST.in` now
   ships `docs/mcp-attest-suite.schema.json` and `docs/posture/`. The sdist
   from PyPI unpacks and runs its own seventy-seven tests green.
+- The tampered-signature probe could tamper nothing. The last character of a
+  base64url signature carries four significant bits, so a signature ends in one
+  of sixteen characters, and flipping the last character of a signature ending
+  in "A" gave back the same bytes. One token in sixteen therefore reached a
+  correct server unchanged, the server accepted it, and the harness reported
+  `AT-OAUTH-002` against a server that verifies signatures correctly. The
+  signature is now decoded, one bit is flipped and encoded again, so the
+  tampered token always differs. A test covers all sixteen endings.
 
 ## [1.2.0] - 2026-11-14
 

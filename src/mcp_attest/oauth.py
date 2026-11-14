@@ -98,15 +98,31 @@ def resign(token: str, key: str, **changes: Any) -> str:
 
 
 def tamper(token: str) -> str:
-    """Flip the last character of the signature."""
+    """Corrupt the signature so that the decoded bytes definitely differ.
+
+    Flipping a character of the encoded signature is not enough. The last
+    character of a base64url signature carries only four significant bits, and
+    the encoder always leaves the remaining two at zero, so one token in
+    sixteen ends in "A" and comes back byte for byte identical after a flip.
+    Such a token still passes a server that verifies signatures, and the
+    harness would report a vulnerability that is not there. So the signature is
+    decoded, one bit is flipped, and it is encoded again.
+    """
     parts = token.split(".")
     if len(parts) != 3:
         return token + "x"
     signature = parts[2]
     if not signature:
         return token
-    flipped = "A" if signature[-1] != "A" else "B"
-    return "%s.%s.%s" % (parts[0], parts[1], signature[:-1] + flipped)
+    try:
+        raw = bytearray(b64url_decode(signature))
+    except ValueError:
+        raw = bytearray()
+    if not raw:
+        flipped = "A" if signature[-1] != "A" else "B"
+        return "%s.%s.%s" % (parts[0], parts[1], signature[:-1] + flipped)
+    raw[0] ^= 0x01
+    return "%s.%s.%s" % (parts[0], parts[1], b64url(bytes(raw)))
 
 
 def unsigned(token: str) -> str:
