@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-### Added
-
-- Nothing yet: the next release starts from the 1.2.1 line.
+## [1.2.2] - 2026-11-14
 
 ### Fixed
 
@@ -18,7 +16,6 @@
   signature, flips one bit and encodes it again, so the token always differs.
   The example server also refuses a malformed signature with a plain 401
   instead of dropping the connection.
-
 ## [1.2.1] - 2026-11-14
 
 Two defects in the published artifact: one in the packaging, one in the probe.
