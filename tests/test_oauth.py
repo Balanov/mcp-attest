@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from mcp_attest.conformance import RunOptions, run_conformance  # noqa: E402
-from mcp_attest.oauth import mint_jwt  # noqa: E402
+from mcp_attest.oauth import b64url_decode, decode_jwt, mint_jwt, tamper  # noqa: E402
 from mcp_attest.policy import policy_from_dict  # noqa: E402
 from mcp_attest.targets import parse_target  # noqa: E402
 
@@ -92,6 +92,49 @@ def make_policy(port: int, upstream_port: int | None = None) -> object:
     else:
         oauth["upstream"] = "http://127.0.0.1:%d/mcp" % upstream_port
     return policy_from_dict(raw)
+
+
+class TamperTest(unittest.TestCase):
+    """A tampered token must differ in the bytes, not only in the spelling.
+
+    The last character of a base64url signature carries four significant bits,
+    so the signature can only end in sixteen characters. Flipping that
+    character used to leave one token in sixteen byte for byte identical, and
+    a server that verifies signatures accepted it — the harness then reported
+    a vulnerability that was not there.
+    """
+
+    def token_for_each_possible_last_character(self) -> dict[str, str]:
+        found: dict[str, str] = {}
+        for index in range(4096):
+            token = mint_jwt({"sub": "alice", "n": index}, KEY)
+            found.setdefault(token.split(".")[2][-1], token)
+            if len(found) == 16:
+                break
+        return found
+
+    def test_a_tampered_signature_always_differs_from_the_original(self) -> None:
+        found = self.token_for_each_possible_last_character()
+        self.assertEqual(16, len(found), "a signature can end in sixteen characters")
+        for last, token in sorted(found.items()):
+            original = b64url_decode(token.split(".")[2])
+            broken = b64url_decode(tamper(token).split(".")[2])
+            self.assertNotEqual(original, broken, "the signature ending in %r did not change" % last)
+
+    def test_a_tampered_token_keeps_its_header_and_payload(self) -> None:
+        token = make_token("alice")
+        broken = tamper(token)
+        self.assertEqual(token.split(".")[:2], broken.split(".")[:2])
+        header, payload = decode_jwt(broken)
+        self.assertEqual("HS256", header["alg"])
+        self.assertEqual("alice", payload["sub"])
+
+    def test_a_tampered_token_stays_three_parts_of_base64url(self) -> None:
+        broken = tamper(make_token("alice"))
+        parts = broken.split(".")
+        self.assertEqual(3, len(parts))
+        self.assertEqual(43, len(parts[2]))
+        self.assertEqual(32, len(b64url_decode(parts[2])))
 
 
 class OAuthBase(unittest.TestCase):
