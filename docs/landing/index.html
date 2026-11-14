@@ -165,6 +165,10 @@
     .also .t { font: 500 11.5px var(--mono); letter-spacing: 0.16em; color: var(--faint); }
     .also code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-size: 13px; color: var(--ink); }
     .also .d { font-size: 14.5px; color: var(--muted); }
+    .posture { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+    .posture .big .n { display: block; font: 500 42px var(--mono); color: var(--accent); letter-spacing: -0.01em; }
+    .posture .big .d { display: block; font-size: 15px; color: var(--muted); margin-top: 12px; max-width: 42ch; }
+    .posture .note { font: 400 13px var(--mono); color: var(--faint); margin-top: 30px; }
 
     .checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
     .check { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
@@ -237,7 +241,7 @@
       <a class="brand" href="https://github.com/Balanov/mcp-attest" aria-label="MCP-ATTEST on GitHub">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8 4v6c0 5-3.4 9.2-8 10.5C7.4 21.7 4 17.5 4 12.5v-6l8-4z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
         <span>MCP-ATTEST</span>
-        <span class="ver">1.1.1</span>
+        <span class="ver">1.2.0</span>
       </a>
       <div class="top-right">
         <nav class="nav">
@@ -282,7 +286,7 @@
             <a class="btn" href="https://pypi.org/project/mcp-attest/" data-i18n="ctaPypi">PyPI</a>
           </div>
           <ul class="facts">
-            <li data-i18n="f1">12 rules, OWASP-mapped</li>
+            <li data-i18n="f1">24 rules, OWASP-mapped</li>
             <li data-i18n="f2">0 runtime dependencies</li>
             <li data-i18n="f3">stdio + Streamable HTTP</li>
             <li data-i18n="f4">No model, no telemetry</li>
@@ -319,10 +323,15 @@
           <code>attest check --policy policy.json --otlp export.json</code>
           <span class="d" data-i18n="alsoD">The same policy, applied to the OpenTelemetry export you already produce.</span>
         </div>
+        <div class="also">
+          <span class="t" data-i18n="also2T">WRITING IT ONCE?</span>
+          <code>attest suite export --policy policy.json --out suite.json</code>
+          <span class="d" data-i18n="also2D">A portable suite with a published schema: any harness can run your expectations.</span>
+        </div>
       </section>
 
       <section id="checks">
-        <h2 data-i18n="rulesTitle">Twelve rules</h2>
+        <h2 data-i18n="rulesTitle">Twenty-four rules</h2>
         <div class="checks">
           <div class="check"><div class="id">AT-AUTHZ-001</div><div class="n" data-i18n="r1n">policy per identity</div><div class="d" data-i18n="r1d">the server allows what your policy denies</div></div>
           <div class="check"><div class="id">AT-AUTHZ-002</div><div class="n" data-i18n="r2n">cross-user objects</div><div class="d" data-i18n="r2d">a valid id belonging to another principal</div></div>
@@ -336,7 +345,28 @@
           <div class="check"><div class="id">AT-SCHEMA-001</div><div class="n" data-i18n="r10n">strict schemas</div><div class="d" data-i18n="r10d">untyped, unbounded or free-form arguments</div></div>
           <div class="check"><div class="id">AT-APPROVAL-001</div><div class="n" data-i18n="r11n">declared risk</div><div class="d" data-i18n="r11d">a state-changing tool with no risk declared</div></div>
           <div class="check"><div class="id">AT-ERROR-001</div><div class="n" data-i18n="r12n">clean errors</div><div class="d" data-i18n="r12d">stack traces and internal paths in errors</div></div>
+          <div class="check"><div class="id">AT-OAUTH-001</div><div class="n" data-i18n="o1n">token required</div><div class="d" data-i18n="o1d">a request with no bearer token is accepted</div></div>
+          <div class="check"><div class="id">AT-OAUTH-002</div><div class="n" data-i18n="o2n">signature verified</div><div class="d" data-i18n="o2d">a tampered signature is accepted</div></div>
+          <div class="check"><div class="id">AT-OAUTH-003</div><div class="n" data-i18n="o3n">unsigned refused</div><div class="d" data-i18n="o3d">an alg: none token is accepted</div></div>
+          <div class="check"><div class="id">AT-OAUTH-004</div><div class="n" data-i18n="o4n">expiry enforced</div><div class="d" data-i18n="o4d">an expired token is accepted</div></div>
+          <div class="check"><div class="id">AT-OAUTH-005</div><div class="n" data-i18n="o5n">audience enforced</div><div class="d" data-i18n="o5d">a token for another resource is accepted</div></div>
+          <div class="check"><div class="id">AT-OAUTH-006</div><div class="n" data-i18n="o6n">issuer enforced</div><div class="d" data-i18n="o6d">a token from another issuer is accepted</div></div>
+          <div class="check"><div class="id">AT-OAUTH-007</div><div class="n" data-i18n="o7n">scope enforced</div><div class="d" data-i18n="o7d">a tool runs without the scope it needs</div></div>
+          <div class="check"><div class="id">AT-OAUTH-008</div><div class="n" data-i18n="o8n">resource metadata</div><div class="d" data-i18n="o8d">the refusal does not point at the metadata</div></div>
+          <div class="check"><div class="id">AT-OAUTH-009</div><div class="n" data-i18n="o9n">PKCE required</div><div class="d" data-i18n="o9d">a code is issued without an S256 challenge</div></div>
+          <div class="check"><div class="id">AT-OAUTH-010</div><div class="n" data-i18n="o10n">redirect validated</div><div class="d" data-i18n="o10d">a code is issued for an unregistered URI</div></div>
+          <div class="check"><div class="id">AT-OAUTH-011</div><div class="n" data-i18n="o11n">state echoed</div><div class="d" data-i18n="o11d">the authorization response drops the state</div></div>
+          <div class="check"><div class="id">AT-OAUTH-012</div><div class="n" data-i18n="o12n">no passthrough</div><div class="d" data-i18n="o12d">the upstream accepts a token made for this server</div></div>
         </div>
+      </section>
+
+      <section id="posture">
+        <h2 data-i18n="postureTitle">What the registry looks like</h2>
+        <div class="posture">
+          <div class="big"><span class="n">45.8%</span><span class="d" data-i18n="p1d">of the servers in the official MCP registry that answered the handshake opened a session with no credentials at all</span></div>
+          <div class="big"><span class="n">189</span><span class="d" data-i18n="p2d">servers measured, every ninth of the 1,698 the registry lists: three well-formed requests each, and no tool call ever</span></div>
+        </div>
+        <p class="note" data-i18n="p3d">Measured by the tool itself, with the method published and no host names. Reproduce it with one command.</p>
       </section>
 
       <section id="ci">
@@ -442,7 +472,7 @@
           tagline: "Point it at a live MCP server. It connects as every identity in your policy, sends the real calls, and reports every place where the server's decision differs from the one your policy requires.",
           copy: "Copy", copied: "Copied",
           ctaGit: "GitHub", ctaPypi: "PyPI",
-          f1: "12 rules, OWASP-mapped", f2: "0 runtime dependencies", f3: "stdio + Streamable HTTP", f4: "No model, no telemetry",
+          f1: "24 rules, OWASP-mapped", f2: "0 runtime dependencies", f3: "stdio + Streamable HTTP", f4: "No model, no telemetry",
           cardTitle: "The authorization gap", cardCmd: "attest test",
           gapPolicy: "Policy says", gapServer: "Server did", gapHarness: "mcp-attest",
           howTitle: "How it works",
@@ -452,7 +482,13 @@
           h4t: "FINDINGS", h4d: "A blocking exit code, SARIF for code scanning, and a hash-chained evidence bundle.",
           alsoT: "ALREADY EXPORTING OTEL?",
           alsoD: "The same policy, applied to the OpenTelemetry export you already produce.",
-          rulesTitle: "Twelve rules",
+          also2T: "WRITING IT ONCE?",
+          also2D: "A portable suite with a published schema: any harness can run your expectations.",
+          postureTitle: "What the registry looks like",
+          p1d: "of the servers in the official MCP registry that answered the handshake opened a session with no credentials at all",
+          p2d: "servers measured, every ninth of the 1,698 the registry lists: three well-formed requests each, and no tool call ever",
+          p3d: "Measured by the tool itself, with the method published and no host names. Reproduce it with one command.",
+          rulesTitle: "Twenty-four rules",
           r1n: "policy per identity", r1d: "the server allows what your policy denies",
           r2n: "cross-user objects", r2d: "a valid id belonging to another principal",
           r3n: "tokens validated", r3d: "a malformed, tampered or expired token gets through",
@@ -487,7 +523,7 @@
           tagline: "Наведи на живой MCP-сервер. Он подключается как каждая личность из твоей политики, отправляет настоящие вызовы и показывает все места, где решение сервера расходится с решением политики.",
           copy: "Copy", copied: "Скопировано",
           ctaGit: "GitHub", ctaPypi: "PyPI",
-          f1: "12 правил по OWASP", f2: "0 зависимостей", f3: "stdio + Streamable HTTP", f4: "Без модели и телеметрии",
+          f1: "24 правил по OWASP", f2: "0 зависимостей", f3: "stdio + Streamable HTTP", f4: "Без модели и телеметрии",
           cardTitle: "Разрыв авторизации", cardCmd: "attest test",
           gapPolicy: "Политика", gapServer: "Сервер сделал", gapHarness: "mcp-attest",
           howTitle: "Как это работает",
@@ -497,7 +533,13 @@
           h4t: "НАХОДКИ", h4d: "Блокирующий код возврата, SARIF для code scanning и хеш-цепочка доказательств.",
           alsoT: "УЖЕ ОТДАЁШЬ В OTEL?",
           alsoD: "Та же политика, применённая к выгрузке OpenTelemetry, которую ты уже отдаёшь.",
-          rulesTitle: "Двенадцать правил",
+          also2T: "ПИШЕШЬ ОДИН РАЗ?",
+          also2D: "Переносимый сюит с опубликованной схемой: твои ожидания запустит любой харнесс.",
+          postureTitle: "Что видно в реестре",
+          p1d: "серверов из официального реестра MCP ответили на рукопожатие — и открыли сессию вообще без учётных данных",
+          p2d: "серверов измерено, каждый девятый из 1698 в реестре: по три корректных запроса и ни одного вызова инструмента",
+          p3d: "Измерено самим инструментом, методология опубликована, имён хостов нет. Воспроизводится одной командой.",
+          rulesTitle: "Двадцать четыре правила",
           r1n: "политика на личность", r1d: "сервер разрешает то, что политика запрещает",
           r2n: "чужие объекты", r2d: "валидный идентификатор другого принципала",
           r3n: "проверка токенов", r3d: "некорректный, подделанный или просроченный токен проходит",

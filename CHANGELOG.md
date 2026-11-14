@@ -4,7 +4,19 @@
 
 ### Added
 
-- Nothing yet: the next release starts from the 1.2.0 line.
+- Nothing yet: the next release starts from the 1.2.1 line.
+
+## [1.2.1] - 2026-11-14
+
+The source distribution now carries what its own tests read.
+
+### Fixed
+
+- The sdist left `docs/` out, so the published suite schema and the posture
+  report were missing from the artifact, and the test that checks the schema
+  against the validator failed on the unpacked tarball. `MANIFEST.in` now
+  ships `docs/mcp-attest-suite.schema.json` and `docs/posture/`. The sdist
+  from PyPI unpacks and runs its own seventy-seven tests green.
 
 ## [1.2.0] - 2026-11-14
 

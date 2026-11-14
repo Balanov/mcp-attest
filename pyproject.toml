@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-attest"
-version = "1.2.0"
+version = "1.2.1"
 description = "Authorization conformance harness for MCP servers: test a live server against your own policy, as every identity, and produce evidence you can hand to an auditor."
 readme = "README.md"
 requires-python = ">=3.10"

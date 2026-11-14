@@ -3,5 +3,7 @@ include README.md
 include README_RU.md
 include CHANGELOG.md
 include SPEC.md
+include docs/mcp-attest-suite.schema.json
+recursive-include docs/posture *.md
 recursive-include tests *.py *.json *.jsonl
 recursive-include examples *.py *.json *.jsonl
