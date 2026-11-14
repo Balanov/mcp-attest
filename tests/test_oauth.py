@@ -78,6 +78,34 @@ def make_token(subject: str, scope: str = "orders:read") -> str:
     )
 
 
+def find_token_the_flip_missed() -> str:
+    """A token whose signature the old character flip left unchanged.
+
+    The AT-TOKEN-001 probe used to replace the first character of the
+    signature with a letter picked from the last one. When the signature
+    already began with that letter the token came back byte for byte
+    identical, so a server that verifies signatures accepted it.
+    """
+    now = int(time.time())
+    for index in range(4096):
+        token = mint_jwt(
+            {
+                "sub": "alice",
+                "iss": ISSUER,
+                "aud": AUDIENCE,
+                "scope": "orders:read",
+                "iat": now,
+                "exp": now + 3600,
+                "n": index,
+            },
+            KEY,
+        )
+        signature = token.split(".")[2]
+        if signature[0] == "A" and signature[-1] != "A":
+            return token
+    raise AssertionError("no signature with that shape was found")
+
+
 def make_policy(port: int, upstream_port: int | None = None) -> object:
     raw = json.loads(POLICY.read_text(encoding="utf-8"))
     oauth = raw["oauth"]
@@ -136,6 +164,18 @@ class TamperTest(unittest.TestCase):
         self.assertEqual(43, len(parts[2]))
         self.assertEqual(32, len(b64url_decode(parts[2])))
 
+    def test_a_signature_that_starts_with_a_is_tampered_too(self) -> None:
+        token = ""
+        for index in range(4096):
+            candidate = mint_jwt({"sub": "alice", "n": index}, KEY)
+            if candidate.split(".")[2][0] == "A":
+                token = candidate
+                break
+        self.assertTrue(token, "no signature started with A")
+        original = b64url_decode(token.split(".")[2])
+        broken = b64url_decode(tamper(token).split(".")[2])
+        self.assertNotEqual(original, broken, "a signature that started with A did not change")
+
 
 class OAuthBase(unittest.TestCase):
     def setUp(self) -> None:
@@ -176,6 +216,64 @@ class SecureOAuthServerTest(OAuthBase):
         self.assertIn("AT-OAUTH-005", seen)
         self.assertIn("AT-OAUTH-006", seen)
         self.assertIn("AT-OAUTH-007", seen)
+
+
+class TokenProbeTest(OAuthBase):
+    """AT-TOKEN-001 must offer the server a token it cannot accept.
+
+    The probe used to replace the first character of the signature instead of
+    a bit of its bytes. One token in sixty-four came back byte for byte
+    identical, the server accepted it as the valid token it was, and the
+    harness reported a critical finding against a server that was doing
+    everything right.
+    """
+
+    def probe_headers(self, result) -> list[str]:
+        return [
+            evidence.request.get("headers", {}).get("Authorization", "")
+            for evidence in result.evidences
+            if evidence.test_id == "AT-TOKEN-001"
+        ]
+
+    def test_a_correct_server_is_not_reported(self) -> None:
+        os.environ["ALICE_TOKEN"] = find_token_the_flip_missed()
+        result = self.run_harness()
+        self.assertEqual(
+            [],
+            [(f.check, f.title) for f in result.findings if f.check == "AT-TOKEN-001"],
+            "a server that verifies signatures was reported as accepting a tampered token",
+        )
+
+    def test_every_bad_token_is_refused(self) -> None:
+        result = self.run_harness()
+        token_evidence = [e for e in result.evidences if e.test_id == "AT-TOKEN-001"]
+        self.assertEqual(3, len(token_evidence), "the three bad tokens were not probed")
+        self.assertTrue(all(e.observed == "deny" for e in token_evidence))
+
+    def test_the_probe_sends_a_tampered_token(self) -> None:
+        valid = find_token_the_flip_missed()
+        os.environ["ALICE_TOKEN"] = valid
+        result = self.run_harness()
+        headers = self.probe_headers(result)
+        self.assertEqual(3, len(headers), "the three bad tokens were not probed")
+        self.assertIn(
+            "Bearer " + tamper(valid),
+            headers,
+            "the probe did not offer the server a tampered token",
+        )
+        self.assertNotIn("Bearer " + valid, headers, "the probe sent the valid token")
+
+    def test_a_server_that_accepts_a_tampered_token_is_reported(self) -> None:
+        port = free_port()
+        proc = start_server(port, "--no-signature-check")
+        self.addCleanup(stop_server, proc)
+        result = self.run_harness(port=port)
+        titles = [f.title for f in result.findings if f.check == "AT-TOKEN-001"]
+        self.assertIn(
+            "the server accepted a token with a tampered signature",
+            titles,
+            "the checker did not report the accepted token",
+        )
 
 
 class OAuthDefectTest(OAuthBase):

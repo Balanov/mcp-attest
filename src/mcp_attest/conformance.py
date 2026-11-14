@@ -32,6 +32,7 @@ from .oauth import (
     resource_metadata_url,
     resign,
     scope_set,
+    tamper,
     token_probes,
 )
 from .policy import CRITICAL, HIGH, INFO, LOW, MEDIUM, Identity, Policy
@@ -237,15 +238,6 @@ def _looks_like_base64_blob(text: str) -> bool:
 
 def _b64url(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
-
-
-def _tamper_token(token: str) -> str:
-    """Flip the last character of a token's signature."""
-    if token.count(".") == 2:
-        head, body, sig = token.split(".")
-        sig = ("A" if sig[-1] != "A" else "B") + sig[1:]
-        return f"{head}.{body}.{sig}"
-    return token[:-1] + ("A" if token[-1] != "A" else "B")
 
 
 def _expired_jwt() -> str:
@@ -915,7 +907,12 @@ def _run_token_checks(
 
     probes = [
         ("a malformed token", "Bearer not-a-real-token"),
-        ("a token with a tampered signature", f"Bearer {_tamper_token(bearer)}"),
+        # ``tamper`` flips a bit of the signature bytes, so the server sees a
+        # different token. A character flip left one token in sixty-four byte
+        # for byte identical, and a server that verifies signatures then
+        # accepted it: the harness reported a critical finding against a
+        # server that was doing everything right.
+        ("a token with a tampered signature", f"Bearer {tamper(bearer)}"),
         ("an expired token", f"Bearer {_expired_jwt()}"),
     ]
     for label, header in probes:
