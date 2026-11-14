@@ -6,6 +6,19 @@
 
 - Nothing yet: the next release starts from the 1.2.1 line.
 
+### Fixed
+
+- The `AT-TOKEN-001` probe could tamper nothing. It replaced the first
+  character of the signature with a letter picked from the last one, so a
+  signature that already began with that letter came back byte for byte
+  identical: one token in sixty-four reached a correct server unchanged, the
+  server accepted it as the valid token it was, and the harness reported a
+  critical finding against a server that verifies signatures correctly. The
+  probe now uses the same helper as the OAuth probes, which decodes the
+  signature, flips one bit and encodes it again, so the token always differs.
+  The example server also refuses a malformed signature with a plain 401
+  instead of dropping the connection.
+
 ## [1.2.1] - 2026-11-14
 
 Two defects in the published artifact: one in the packaging, one in the probe.

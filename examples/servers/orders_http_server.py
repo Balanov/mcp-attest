@@ -214,7 +214,11 @@ class Handler(BaseHTTPRequestHandler):
             expected = hmac.new(
                 self.oauth_key.encode(), signing_input.encode("ascii"), hashlib.sha256
             ).digest()
-            if not hmac.compare_digest(expected, b64url_decode(parts[2])):
+            try:
+                signature = b64url_decode(parts[2])
+            except ValueError:
+                return None
+            if not hmac.compare_digest(expected, signature):
                 return None
 
         if not self.no_issuer_check:
