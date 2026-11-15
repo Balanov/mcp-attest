@@ -52,7 +52,8 @@ def _load_policy(path: str):
     try:
         return load_policy(path)
     except (OSError, PolicyError) as exc:
-        raise SystemExit(f"policy error: {exc}")
+        print(f"policy error: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
 
 
 def cmd_init(args: argparse.Namespace) -> int:
