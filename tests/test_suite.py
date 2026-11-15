@@ -163,5 +163,57 @@ class SuiteRunTest(unittest.TestCase):
             load_suite(path)
 
 
+class SuiteCLIRoundTripTest(unittest.TestCase):
+    def test_exported_suite_checks_secure_and_broken_http_servers(self) -> None:
+        env = dict(os.environ, PYTHONPATH=str(ROOT / "src"),
+                   ALICE_TOKEN="alice-token", LEAD_TOKEN="lead-token")
+        for flags, expected_code in (([], 0), (["--no-auth"], 1)):
+            with self.subTest(server_flags=flags), tempfile.TemporaryDirectory() as directory:
+                port = free_port()
+                proc = subprocess.Popen(
+                    [sys.executable, str(SERVER), "--port", str(port), *flags],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env,
+                )
+                try:
+                    deadline = time.monotonic() + 15
+                    while True:
+                        if proc.poll() is not None:
+                            self.fail("example server exited before it was ready")
+                        try:
+                            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                                break
+                        except OSError:
+                            if time.monotonic() >= deadline:
+                                self.fail("example server did not become ready")
+                            time.sleep(0.05)
+                    suite_path = str(Path(directory) / "suite.json")
+                    exported = subprocess.run(
+                        [sys.executable, "-m", "mcp_attest", "suite", "export",
+                         "--policy", str(POLICY), "--out", suite_path],
+                        cwd=ROOT, env=env, text=True, capture_output=True, timeout=30,
+                    )
+                    self.assertEqual(0, exported.returncode, exported.stderr)
+                    ran = subprocess.run(
+                        [sys.executable, "-m", "mcp_attest", "suite", "run",
+                         "--suite", suite_path, "--url", "http://127.0.0.1:%d/mcp" % port, "--json"],
+                        cwd=ROOT, env=env, text=True, capture_output=True, timeout=60,
+                    )
+                    self.assertEqual(expected_code, ran.returncode, ran.stdout + ran.stderr)
+                    result = json.loads(ran.stdout)
+                    self.assertFalse(result["error"])
+                    self.assertGreater(result["calls"], 0)
+                    self.assertEqual(["alice", "lead"], result["identities"])
+                    if expected_code:
+                        self.assertTrue(any(finding["severity"] in ("high", "critical")
+                                            for finding in result["findings"]))
+                finally:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=5)
+
+
 if __name__ == "__main__":
     unittest.main()
