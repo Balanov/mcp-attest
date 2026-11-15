@@ -230,6 +230,14 @@ def load_policy(path: str | Path) -> Policy:
 
 
 def policy_from_dict(raw: dict[str, Any]) -> Policy:
+    known_keys = {"version", "default_decision", "clients", "cases", "probes", "oauth", "gateway", "receipts"}
+    unknown_keys = sorted(set(raw) - known_keys)
+    if unknown_keys:
+        raise PolicyError(f"unknown policy keys: {', '.join(unknown_keys)}")
+    version = raw.get("version", 1)
+    if type(version) is not int or version != 1:
+        raise PolicyError(f"unsupported policy version {version!r}; supported version: 1")
+
     clients: dict[str, ClientPolicy] = {}
     for name, spec in (raw.get("clients") or {}).items():
         tools = spec.get("tools") or {}
@@ -282,7 +290,7 @@ def policy_from_dict(raw: dict[str, Any]) -> Policy:
         raise PolicyError(f"default_decision must be 'allow' or 'deny', got {default_decision!r}")
 
     return Policy(
-        version=int(raw.get("version", 1)),
+        version=version,
         default_decision=default_decision,
         clients=clients,
         gateway_fail_closed=bool(gateway.get("fail_closed", True)),
