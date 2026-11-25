@@ -56,6 +56,11 @@ handshake ends the run for that identity; it is never retried silently.
 
 ## 3. The policy file
 
+The top-level keys are version, default_decision, clients, cases, probes, oauth,
+gateway and receipts. Unknown top-level keys are errors. Version 1 is supported;
+omitting the version keeps version 1 and the default decision remains deny.
+
+
 ```json
 {
   "version": 1,
