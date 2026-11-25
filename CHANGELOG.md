@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [1.2.3] — 2026-11-25
+
+### Fixed
+
+- A policy with an unknown top-level key, or a version this build does not support, is refused when the policy is read. A policy-load failure now exits with the documented bad-input code 2 instead of the blocking-finding code 1.
+
+
 ## [1.2.2] - 2026-11-14
 
 ### Fixed
