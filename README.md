@@ -304,6 +304,11 @@ The suite starts real MCP servers — one over stdio, one over HTTP, one with br
 - [latch](https://github.com/Balanov/latch) — one tiny HTTPS contract between any agent and any service.
 
 
+## Related
+
+- [pact](https://github.com/Balanov/pact) — a tiny contract for agent-initiated payments: quote, consent, commit, receipt, chained by digests.
+- [attest](https://github.com/Balanov/attest) — offline verifier for PACT trails: one static Go binary, standard library only.
+
 ## License
 
 [MIT](LICENSE). Fork it, modify it, embed it, ship it.
